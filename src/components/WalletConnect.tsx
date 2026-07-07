@@ -183,8 +183,11 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
 
   async function checkIfConnected() {
     if (!isWalletAvailable()) return;
+    const storedAddress = useStore.getState().walletAddress;
+    if (!storedAddress) return; // Do not auto-connect if explicitly disconnected
+
     const addr = await getUserAddress();
-    if (addr) {
+    if (addr && addr.toLowerCase() === storedAddress.toLowerCase()) {
       setAddress(addr);
       const bal = await getUserBalance();
       setBalance(bal);

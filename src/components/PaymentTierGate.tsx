@@ -19,7 +19,7 @@ export default function PaymentTierGate({
 }: PaymentTierGateProps) {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
-  const { demoMode, isTierUnlocked, isAssetUnlocked, unlockTier, unlockAsset, addPayment } =
+  const { demoMode, isTierUnlocked, isAssetUnlocked, unlockTier, unlockAsset, addPayment, setDemoMode } =
     useStore();
 
   // Check if already unlocked
@@ -42,7 +42,6 @@ export default function PaymentTierGate({
     try {
       // In demo mode, simulate payment instantly
       if (demoMode) {
-        // Simulate a brief processing delay
         await new Promise((r) => setTimeout(r, 800));
 
         const mockTx = {
@@ -83,6 +82,36 @@ export default function PaymentTierGate({
       } else {
         setError(e.message || "Payment failed");
       }
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  // Force simulated unlock if users get errors or lack HSK
+  async function forceDemoUnlock() {
+    setError("");
+    setPaying(true);
+    try {
+      setDemoMode(true);
+      await new Promise((r) => setTimeout(r, 600));
+
+      const mockTx = {
+        hash: `0xdemo${Date.now().toString(16).padStart(60, "0")}`,
+        type: "tier_unlock" as const,
+        tier,
+        amount: tierConfig.costHsk.toString(),
+        symbol: assetAddress ? "DEMO" : undefined,
+        timestamp: Date.now(),
+      };
+
+      if (tier === 3 && assetAddress) {
+        unlockAsset(assetAddress);
+      } else {
+        unlockTier(tier);
+      }
+      addPayment(mockTx);
+    } catch (err: any) {
+      setError(err.message || "Bypass simulation failed");
     } finally {
       setPaying(false);
     }
@@ -215,18 +244,41 @@ export default function PaymentTierGate({
           </button>
 
           {error && (
-            <div
-              style={{
-                color: theme.danger,
-                fontSize: 12,
-                marginTop: 12,
-                padding: "8px 12px",
-                background: `${theme.danger}10`,
-                borderRadius: 8,
-                border: `1px solid ${theme.danger}20`,
-              }}
-            >
-              {error}
+            <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+              <div
+                style={{
+                  color: theme.danger,
+                  fontSize: 12,
+                  padding: "8px 12px",
+                  background: `${theme.danger}10`,
+                  borderRadius: 8,
+                  border: `1px solid ${theme.danger}20`,
+                }}
+              >
+                {error}
+              </div>
+              <button
+                onClick={forceDemoUnlock}
+                style={{
+                  background: `${theme.accent}12`,
+                  color: theme.accent,
+                  border: `1px solid ${theme.accent}30`,
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${theme.accent}20`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `${theme.accent}12`;
+                }}
+              >
+                Simulate with Demo Mode instead
+              </button>
             </div>
           )}
         </div>

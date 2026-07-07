@@ -11,6 +11,7 @@ import PaymentHistory from "@/components/PaymentHistory";
 import TokenChecker from "@/components/TokenChecker";
 import WalletConnect from "@/components/WalletConnect";
 import PaymentTierGate from "@/components/PaymentTierGate";
+import AICopilot from "@/components/AICopilot";
 import { isWalletAvailable, getUserAddress } from "@/lib/contracts-client";
 import { chainMeta } from "@/lib/contract";
 import type { Signal, AgentResult } from "@/lib/types";
@@ -19,10 +20,11 @@ type Tab = "signals" | "checker";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isConnected, setWallet, signals, setSignals, agentResults, addAgentResults } = useStore();
+  const { isConnected, setWallet, signals, setSignals, agentResults, addAgentResults, demoMode, setDemoMode } = useStore();
   const [walletReady, setWalletReady] = useState(false);
   const [localSignals, setLocalSignals] = useState<Signal[]>([]);
   const [localResults, setLocalResults] = useState<AgentResult[]>([]);
+  const [steps, setSteps] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(true);
   const [stats, setStats] = useState({ signalsPaid: 0, decisions: 0, hskSpent: 0 });
@@ -96,12 +98,14 @@ export default function Dashboard() {
 
   async function runCycle() {
     setRunning(true);
+    setSteps([]);
     try {
       const res = await fetch("/api/run-agent", { method: "POST" });
       const j = await res.json();
       if (j.success) {
         setLocalResults(j.results ?? []);
         addAgentResults(j.results ?? []);
+        setSteps(j.steps ?? []);
         await loadStats();
       } else {
         console.error("[Dashboard] Agent error:", j.error);
@@ -190,6 +194,40 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {/* Demo Mode Toggle */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", border: `1px solid ${theme.border}`, padding: "6px 12px", borderRadius: 10 }}>
+            <span style={{ fontSize: 10, color: demoMode ? theme.accent : theme.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {demoMode ? "Demo Mode" : "Live Mode"}
+            </span>
+            <button
+              onClick={() => setDemoMode(!demoMode)}
+              style={{
+                width: 32,
+                height: 18,
+                borderRadius: 99,
+                background: demoMode ? theme.accent : theme.border,
+                border: "none",
+                cursor: "pointer",
+                position: "relative",
+                transition: "all 0.2s",
+                padding: 0,
+              }}
+            >
+              <span
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  background: "#06070D",
+                  position: "absolute",
+                  top: 2,
+                  left: demoMode ? 16 : 2,
+                  transition: "all 0.2s",
+                }}
+              />
+            </button>
+          </div>
+
           <a
             href="/cli"
             className="btn-secondary"
@@ -311,11 +349,12 @@ export default function Dashboard() {
               <TokenChecker />
             )}
 
-            <AgentReasoning results={localResults} running={running} />
+            <AgentReasoning results={localResults} steps={steps} running={running} />
           </section>
 
           {/* Right sidebar */}
           <aside style={{ display: "grid", gap: 18 }}>
+            <AICopilot />
             <PaymentHistory results={localResults} />
           </aside>
         </div>
