@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sentinel — Web3 Token Signal Terminal | HashKey Chain",
   description:
-    "Autonomous AI-powered token signal and analytics dashboard. Real-time DexScreener data, TradingView charts, Smart Money tracking, and on-chain settlements via HSK on HashKey Chain. Built for the DoraHacks Hackathon.",
+    "Autonomous AI-powered token signal and analytics dashboard. Real-time DexScreener data, TradingView charts, Smart Money tracking, and on-chain settlements via HSK on HashKey Chain.",
   keywords: [
     "Sentinel",
     "HashKey Chain",
@@ -27,7 +27,8 @@ export const metadata: Metadata = {
     "trading",
     "Base",
     "Ethereum",
-    "DoraHacks",
+    "token analytics",
+    "on-chain settlement",
   ],
   openGraph: {
     title: "Sentinel — Web3 Token Signal Terminal",

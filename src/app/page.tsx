@@ -260,7 +260,7 @@ export default function Home() {
             style={{ marginBottom: 28 }}
           >
             <div className="live-dot" style={{ width: 6, height: 6 }} />
-            HashKey Chain Hackathon · DoraHacks
+            Live on HashKey Chain · Mainnet
           </div>
 
           {/* Decorative ring */}

@@ -12,6 +12,9 @@ interface SentinelState {
   chainId: number;
   isConnected: boolean;
 
+  // Demo mode — auto-unlock tiers when not on HashKey Chain
+  demoMode: boolean;
+
   // Tiers (persisted per session per wallet)
   unlockedTiers: number[]; // [1, 2, 3]
   unlockedAssets: string[]; // contract addresses unlocked for tier 3
@@ -29,6 +32,7 @@ interface SentinelState {
   setWallet: (address: string, balance: string, chainId: number) => void;
   disconnectWallet: () => void;
   updateBalance: (balance: string) => void;
+  setDemoMode: (demo: boolean) => void;
   unlockTier: (tier: TierLevel) => void;
   unlockAsset: (contractAddress: string) => void;
   isTierUnlocked: (tier: TierLevel) => boolean;
@@ -46,6 +50,7 @@ const initialState = {
   balance: "0",
   chainId: 0,
   isConnected: false,
+  demoMode: true, // Default to demo mode — most users won't have HSK
   unlockedTiers: [] as number[],
   unlockedAssets: [] as string[],
   signals: [] as Signal[],
@@ -66,6 +71,8 @@ export const useStore = create<SentinelState>()(
           balance,
           chainId,
           isConnected: true,
+          // Auto-detect demo mode: if not on HashKey Chain (177), enable demo
+          demoMode: chainId !== 177,
         }),
 
       disconnectWallet: () =>
@@ -74,6 +81,8 @@ export const useStore = create<SentinelState>()(
         }),
 
       updateBalance: (balance) => set({ balance }),
+
+      setDemoMode: (demoMode) => set({ demoMode }),
 
       unlockTier: (tier) => {
         const current = get().unlockedTiers;
@@ -91,7 +100,11 @@ export const useStore = create<SentinelState>()(
         }
       },
 
-      isTierUnlocked: (tier) => get().unlockedTiers.includes(tier),
+      isTierUnlocked: (tier) => {
+        // In demo mode, tier 1 (basic signals) is always unlocked
+        if (get().demoMode && tier === 1) return true;
+        return get().unlockedTiers.includes(tier);
+      },
 
       isAssetUnlocked: (contractAddress) =>
         get().unlockedAssets.includes(contractAddress.toLowerCase()),
@@ -123,6 +136,7 @@ export const useStore = create<SentinelState>()(
         unlockedTiers: state.unlockedTiers,
         unlockedAssets: state.unlockedAssets,
         paymentHistory: state.paymentHistory,
+        demoMode: state.demoMode,
       }),
     }
   )

@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [localSignals, setLocalSignals] = useState<Signal[]>([]);
   const [localResults, setLocalResults] = useState<AgentResult[]>([]);
   const [running, setRunning] = useState(false);
+  const [signalsLoading, setSignalsLoading] = useState(true);
   const [stats, setStats] = useState({ signalsPaid: 0, decisions: 0, hskSpent: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("signals");
@@ -51,6 +52,7 @@ export default function Dashboard() {
   }
 
   async function loadSignals() {
+    setSignalsLoading(true);
     try {
       const res = await fetch("/api/signals");
       const j = await res.json();
@@ -60,6 +62,8 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.error("[Dashboard] Signal fetch error:", e);
+    } finally {
+      setSignalsLoading(false);
     }
   }
 
@@ -187,6 +191,13 @@ export default function Dashboard() {
 
         <div className="dashboard-header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <a
+            href="/cli"
+            className="btn-secondary"
+            style={{ padding: "6px 14px", fontSize: 12 }}
+          >
+            CLI ↗
+          </a>
+          <a
             href={chainMeta().explorer}
             target="_blank"
             rel="noreferrer"
@@ -268,7 +279,7 @@ export default function Dashboard() {
           <section style={{ display: "grid", gap: 18 }}>
             {activeTab === "signals" ? (
               <>
-                <SignalFeed signals={localSignals} loading={localSignals.length === 0} gated={true} />
+                <SignalFeed signals={localSignals} loading={signalsLoading} gated={true} />
 
                 {/* Premium signals (Tier 2) */}
                 {localSignals.filter((s) => s.score >= 80).length > 0 && (
