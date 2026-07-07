@@ -27,6 +27,14 @@ export function getActiveProvider(): any {
 
 // Check if any wallet provider is available
 export function isWalletAvailable(): boolean {
+  if (typeof window !== "undefined") {
+    try {
+      const state = JSON.parse(localStorage.getItem("sentinel-store") || "{}");
+      if (state?.state?.demoMode || state?.state?.isConnected) {
+        return true;
+      }
+    } catch {}
+  }
   return typeof window !== "undefined" && getActiveProvider() !== null;
 }
 
@@ -46,7 +54,15 @@ export async function getUserSigner(): Promise<ethers.Signer | null> {
 
 export async function getUserAddress(): Promise<string> {
   const provider = getActiveProvider();
-  if (!provider) return "";
+  if (!provider) {
+    if (typeof window !== "undefined") {
+      try {
+        const state = JSON.parse(localStorage.getItem("sentinel-store") || "{}");
+        return state?.state?.walletAddress || "";
+      } catch {}
+    }
+    return "";
+  }
   try {
     const bp = new ethers.BrowserProvider(provider);
     const signer = await bp.getSigner();
@@ -59,7 +75,15 @@ export async function getUserAddress(): Promise<string> {
 
 export async function getUserBalance(): Promise<string> {
   const provider = getActiveProvider();
-  if (!provider) return "0";
+  if (!provider) {
+    if (typeof window !== "undefined") {
+      try {
+        const state = JSON.parse(localStorage.getItem("sentinel-store") || "{}");
+        return state?.state?.balance || "100.0000";
+      } catch {}
+    }
+    return "0";
+  }
   try {
     const bp = new ethers.BrowserProvider(provider);
     const signer = await bp.getSigner();

@@ -26,7 +26,7 @@ interface SentinelState {
 
   // UI
   isLoading: boolean;
-  activeTab: "signals" | "checker" | "analytics";
+  activeTab: "signals" | "ai-signals" | "checker";
 
   // Actions
   setWallet: (address: string, balance: string, chainId: number) => void;
@@ -41,7 +41,7 @@ interface SentinelState {
   addAgentResults: (results: AgentResult[]) => void;
   addPayment: (tx: TxRecord) => void;
   setLoading: (loading: boolean) => void;
-  setActiveTab: (tab: "signals" | "checker" | "analytics") => void;
+  setActiveTab: (tab: "signals" | "ai-signals" | "checker") => void;
   reset: () => void;
 }
 
@@ -101,8 +101,10 @@ export const useStore = create<SentinelState>()(
       },
 
       isTierUnlocked: (tier) => {
-        // In demo mode, tier 1 (basic signals) is always unlocked
-        if (get().demoMode && tier === 1) return true;
+        // Tier 1 (Live Launches Feed) is always free
+        if (tier === 1) return true;
+        // Tier 2 (AI Signals) is unlocked in demo mode
+        if (get().demoMode && tier === 2) return true;
         return get().unlockedTiers.includes(tier);
       },
 

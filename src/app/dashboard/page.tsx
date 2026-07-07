@@ -16,11 +16,11 @@ import { isWalletAvailable, getUserAddress } from "@/lib/contracts-client";
 import { chainMeta } from "@/lib/contract";
 import type { Signal, AgentResult } from "@/lib/types";
 
-type Tab = "signals" | "checker";
+type Tab = "signals" | "ai-signals" | "checker";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isConnected, setWallet, signals, setSignals, agentResults, addAgentResults, demoMode, setDemoMode } = useStore();
+  const { isConnected, setWallet, signals, setSignals, agentResults, addAgentResults, demoMode, setDemoMode, isTierUnlocked, activeTab, setActiveTab } = useStore();
   const [walletReady, setWalletReady] = useState(false);
   const [localSignals, setLocalSignals] = useState<Signal[]>([]);
   const [localResults, setLocalResults] = useState<AgentResult[]>([]);
@@ -29,7 +29,6 @@ export default function Dashboard() {
   const [signalsLoading, setSignalsLoading] = useState(true);
   const [stats, setStats] = useState({ signalsPaid: 0, decisions: 0, hskSpent: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>("signals");
 
   useEffect(() => {
     checkWalletConnection();
@@ -245,33 +244,35 @@ export default function Dashboard() {
             Explorer ↗
           </a>
 
-          <button
-            onClick={runCycle}
-            disabled={running}
-            className="btn-primary"
-            style={{
-              padding: "8px 18px",
-              fontSize: 13,
-              opacity: running ? 0.7 : 1,
-              cursor: running ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            {running ? (
-              <>
-                <span className="animate-blink">●</span> Agent thinking…
-              </>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-                Run Agent Cycle
-              </>
-            )}
-          </button>
+          {isTierUnlocked(2) && (
+            <button
+              onClick={runCycle}
+              disabled={running}
+              className="btn-primary"
+              style={{
+                padding: "8px 18px",
+                fontSize: 13,
+                opacity: running ? 0.7 : 1,
+                cursor: running ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              {running ? (
+                <>
+                  <span className="animate-blink">●</span> Agent thinking…
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5,3 19,12 5,21" />
+                  </svg>
+                  Run Agent Cycle
+                </>
+              )}
+            </button>
+          )}
 
           <WalletConnect onDisconnected={() => router.push("/")} />
         </div>
@@ -292,12 +293,17 @@ export default function Dashboard() {
         {/* Tab navigation */}
         <div style={{ display: "flex", gap: 4, marginBottom: 18 }}>
           <TabButton
-            label="📡 Signal Feed"
+            label="📡 Live Launches"
             active={activeTab === "signals"}
             onClick={() => setActiveTab("signals")}
           />
           <TabButton
-            label="🔍 Token Checker"
+            label="🤖 AI Signals"
+            active={activeTab === "ai-signals"}
+            onClick={() => setActiveTab("ai-signals")}
+          />
+          <TabButton
+            label="🔍 Deep Analytics"
             active={activeTab === "checker"}
             onClick={() => setActiveTab("checker")}
           />
@@ -316,40 +322,57 @@ export default function Dashboard() {
           {/* Left column */}
           <section style={{ display: "grid", gap: 18 }}>
             {activeTab === "signals" ? (
-              <>
-                <SignalFeed signals={localSignals} loading={signalsLoading} gated={true} />
-
-                {/* Premium signals (Tier 2) */}
-                {localSignals.filter((s) => s.score >= 80).length > 0 && (
-                  <PaymentTierGate tier={2}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                        <h2
-                          style={{
-                            fontSize: 13,
-                            color: theme.muted,
-                            textTransform: "uppercase",
-                            letterSpacing: 1,
-                            margin: 0,
-                            fontWeight: 700,
-                          }}
-                        >
-                          ⭐ Premium Signals (80%+ Rise Potential)
-                        </h2>
-                      </div>
-                      <SignalFeed
-                        signals={localSignals.filter((s) => s.score >= 80)}
-                        loading={false}
-                      />
-                    </div>
-                  </PaymentTierGate>
-                )}
-              </>
+              <SignalFeed signals={localSignals} loading={signalsLoading} gated={false} />
+            ) : activeTab === "ai-signals" ? (
+              <PaymentTierGate tier={2}>
+                <div style={{ display: "grid", gap: 18 }}>
+                  <div
+                    style={{
+                      background: theme.panel,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 16,
+                      padding: 20,
+                    }}
+                  >
+                    <h3 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px" }}>🤖 Sentinel AI Trading Agent</h3>
+                    <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 16px", lineHeight: 1.5 }}>
+                      Our autonomous AI agent scans new launches on Base & Ethereum, scores technical momentum, and uses Google Gemini to generate trade signals logged directly to HashKey Chain.
+                    </p>
+                    <button
+                      onClick={runCycle}
+                      disabled={running}
+                      className="btn-primary"
+                      style={{
+                        padding: "10px 20px",
+                        fontSize: 13,
+                        opacity: running ? 0.7 : 1,
+                        cursor: running ? "not-allowed" : "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      {running ? (
+                        <>
+                          <span className="animate-blink">●</span> Agent executing cycle…
+                        </>
+                      ) : (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5,3 19,12 5,21" />
+                          </svg>
+                          Trigger AI Analysis Cycle
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <AgentReasoning results={localResults} steps={steps} running={running} />
+                </div>
+              </PaymentTierGate>
             ) : (
               <TokenChecker />
             )}
-
-            <AgentReasoning results={localResults} steps={steps} running={running} />
           </section>
 
           {/* Right sidebar */}

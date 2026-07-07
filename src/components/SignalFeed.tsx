@@ -190,6 +190,7 @@ function SignalCard({ s, index }: { s: Signal; index: number }) {
             fontSize: 12,
             color: theme.muted,
             flexWrap: "wrap",
+            alignItems: "center",
           }}
         >
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -210,11 +211,72 @@ function SignalCard({ s, index }: { s: Signal; index: number }) {
             1h {s.priceChange1h >= 0 ? "+" : ""}
             {s.priceChange1h.toFixed(1)}%
           </span>
-          {s.ageHours < 24 && (
-            <span style={{ color: theme.warning, fontWeight: 600 }}>
-              🆕 {s.ageHours < 1 ? "<1h" : `${Math.round(s.ageHours)}h`} old
+          <span style={{ color: s.ageHours < 24 ? theme.warning : theme.muted, fontWeight: 600 }}>
+            {s.ageHours < 24 ? "🆕 " : "🕒 "}
+            {s.ageHours < 1 ? "<1h" : s.ageHours < 24 ? `${Math.round(s.ageHours)}h` : `${Math.round(s.ageHours / 24)}d`} old
+          </span>
+        </div>
+
+        {/* Address and links */}
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: `1px solid ${theme.border}40`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 11,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
+            <span
+              style={{
+                color: theme.muted,
+                fontFamily: "var(--font-geist-mono), monospace",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: "70%",
+              }}
+            >
+              CA: {s.contractAddress}
             </span>
-          )}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(s.contractAddress);
+                alert("Contract address copied: " + s.contractAddress);
+              }}
+              style={{
+                background: "rgba(255, 255, 255, 0.05)",
+                border: `1px solid ${theme.border}`,
+                color: theme.accent,
+                cursor: "pointer",
+                padding: "2px 8px",
+                borderRadius: 4,
+                fontSize: 10,
+                fontWeight: 700,
+              }}
+            >
+              Copy
+            </button>
+          </div>
+          <a
+            href={
+              s.chain.toLowerCase() === "base"
+                ? `https://basescan.org/token/${s.contractAddress}`
+                : `https://etherscan.io/token/${s.contractAddress}`
+            }
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: theme.accent,
+              textDecoration: "none",
+              fontWeight: 700,
+            }}
+          >
+            Explorer ↗
+          </a>
         </div>
       </div>
     </div>
@@ -230,7 +292,7 @@ interface SignalFeedProps {
 }
 
 export default function SignalFeed({ signals, loading, gated = false }: SignalFeedProps) {
-  const content = (
+  return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <h2
@@ -243,11 +305,11 @@ export default function SignalFeed({ signals, loading, gated = false }: SignalFe
             fontWeight: 700,
           }}
         >
-          Signal Feed
+          Live launches feed
         </h2>
         <div className="live-dot" style={{ width: 6, height: 6 }} />
         <span style={{ fontSize: 11, color: theme.muted }}>
-          {signals.length} signals · Base & Ethereum
+          {signals.length} tokens · Base & Ethereum
         </span>
       </div>
 
@@ -290,10 +352,4 @@ export default function SignalFeed({ signals, loading, gated = false }: SignalFe
       )}
     </div>
   );
-
-  if (gated) {
-    return <PaymentTierGate tier={1}>{content}</PaymentTierGate>;
-  }
-
-  return content;
 }

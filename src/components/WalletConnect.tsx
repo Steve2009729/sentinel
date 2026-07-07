@@ -508,9 +508,28 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
                     <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 6 }}>
                       No wallets detected
                     </div>
-                    <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5 }}>
-                      Install a Web3 wallet extension to get started
+                    <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 16 }}>
+                      Install a Web3 wallet extension to connect, or enter the mock dashboard in demo mode.
                     </div>
+                    <button
+                      onClick={() => {
+                        setWallet(
+                          "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+                          "100.0000",
+                          999
+                        );
+                        setShowModal(false);
+                        onConnected?.("0x71C7656EC7ab88b098defB751B7401B5f6d8976F");
+                      }}
+                      className="btn-primary"
+                      style={{
+                        padding: "8px 18px",
+                        fontSize: 12,
+                        width: "100%",
+                      }}
+                    >
+                      Bypass & Enter Demo Mode
+                    </button>
                   </div>
 
                   {/* Download links */}

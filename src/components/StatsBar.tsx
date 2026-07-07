@@ -74,7 +74,7 @@ function TierBadge({ tier, unlocked }: { tier: number; unlocked: boolean }) {
 }
 
 export default function StatsBar({ signalsEvaluated, paymentsMade, decisionsLogged, hskSpent }: Props) {
-  const { unlockedTiers } = useStore();
+  const { isTierUnlocked } = useStore();
 
   return (
     <div>
@@ -90,9 +90,9 @@ export default function StatsBar({ signalsEvaluated, paymentsMade, decisionsLogg
         <span style={{ fontSize: 11, color: theme.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>
           Access:
         </span>
-        <TierBadge tier={1} unlocked={unlockedTiers.includes(1)} />
-        <TierBadge tier={2} unlocked={unlockedTiers.includes(2)} />
-        <TierBadge tier={3} unlocked={unlockedTiers.includes(3)} />
+        <TierBadge tier={1} unlocked={isTierUnlocked(1)} />
+        <TierBadge tier={2} unlocked={isTierUnlocked(2)} />
+        <TierBadge tier={3} unlocked={isTierUnlocked(3)} />
       </div>
     </div>
   );

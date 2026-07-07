@@ -128,77 +128,188 @@ function scoreToken(pair: any): Signal {
 
 // ─── API FETCHERS ─────────────────────────────────────────────────────────────
 
-/**
- * Fetch live signals from DexScreener.
- * Uses `/latest/dex/search` which returns active pairs.
- */
-export async function fetchLiveSignals(
-  chain: string = "base",
-  limit: number = 20
-): Promise<Signal[]> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    console.log(`[DexScreener] Fetching signals for chain: ${chain}`);
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
 
-    // Abort after 8 seconds to prevent hanging
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-
-    const res = await fetch(
-      `${DEXSCREENER_API}/latest/dex/search?q=${chain}`,
-      { cache: "no-store", signal: controller.signal }
-    );
-    clearTimeout(timeout);
-
+async function fetchClankerLaunches(): Promise<string[]> {
+  try {
+    console.log("[DexScreener] Fetching clanker.world new launches...");
+    const res = await fetchWithTimeout("https://www.clanker.world/api/tokens", { cache: "no-store" }, 6000);
     if (!res.ok) {
-      console.error(`[DexScreener] API error: ${res.status} ${res.statusText}`);
+      console.warn(`[DexScreener] Clanker API returned status ${res.status}`);
       return [];
     }
+    const json = await res.json();
+    const data = Array.isArray(json) ? json : (json.data ?? []);
+    return data
+      .map((item: any) => (item.contract_address ?? item.address ?? "").toLowerCase())
+      .filter((addr: string) => addr.startsWith("0x"));
+  } catch (e) {
+    console.error("[DexScreener] Failed to fetch Clanker launches:", e);
+    return [];
+  }
+}
 
-    const data = await res.json();
-
-    // Validate response shape
-    if (!data || typeof data !== "object") {
-      console.warn("[DexScreener] Invalid response shape");
+async function fetchDexScreenerLatestProfiles(): Promise<{ address: string; chain: string }[]> {
+  try {
+    console.log("[DexScreener] Fetching DexScreener latest profiles...");
+    const res = await fetchWithTimeout("https://api.dexscreener.com/token-profiles/latest/v1", { cache: "no-store" }, 6000);
+    if (!res.ok) {
+      console.warn(`[DexScreener] DexScreener profiles API returned status ${res.status}`);
       return [];
     }
-
-    const pairs = data.pairs ?? [];
-
-    if (!Array.isArray(pairs) || pairs.length === 0) {
-      console.warn("[DexScreener] No pairs returned from search");
-      return [];
-    }
-
-    const signals = pairs
-      .filter((p: any) => p.chainId === chain)
-      .map(scoreToken)
-      .sort((a: Signal, b: Signal) => b.score - a.score)
-      .slice(0, limit);
-
-    console.log(`[DexScreener] Returned ${signals.length} signals for ${chain}`);
-    return signals;
-  } catch (e: any) {
-    if (e.name === "AbortError") {
-      console.error("[DexScreener] Request timed out after 8s");
-    } else {
-      console.error("[DexScreener] fetchLiveSignals error:", e);
-    }
+    const json = await res.json();
+    const data = Array.isArray(json) ? json : [];
+    return data
+      .filter((item: any) => item.chainId === "base" || item.chainId === "ethereum")
+      .map((item: any) => ({
+        address: (item.tokenAddress ?? "").toLowerCase(),
+        chain: item.chainId
+      }))
+      .filter((item: any) => item.address.startsWith("0x"));
+  } catch (e) {
+    console.error("[DexScreener] Failed to fetch DexScreener profiles:", e);
     return [];
   }
 }
 
 /**
- * Fetch signals from both Base and Ethereum chains.
+ * Fetch live signals from DexScreener for a specific chain.
+ */
+export async function fetchLiveSignals(
+  chain: string = "base",
+  limit: number = 20
+): Promise<Signal[]> {
+  const all = await fetchMultiChainSignals(limit * 2);
+  return all.filter((s) => s.chain === chain).slice(0, limit);
+}
+
+/**
+ * Fetch signals from both Base and Ethereum chains, prioritizing Clanker and new profiles.
  */
 export async function fetchMultiChainSignals(limit: number = 20): Promise<Signal[]> {
-  const [baseSignals, ethSignals] = await Promise.all([
-    fetchLiveSignals("base", limit),
-    fetchLiveSignals("ethereum", Math.floor(limit / 2)),
-  ]);
+  try {
+    // 1. Fetch candidates in parallel
+    const [clankerAddrs, dexProfiles] = await Promise.all([
+      fetchClankerLaunches(),
+      fetchDexScreenerLatestProfiles()
+    ]);
 
-  return [...baseSignals, ...ethSignals]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    // 2. Build candidate lists by chain
+    const baseAddresses = new Set<string>();
+    const ethAddresses = new Set<string>();
+    const clankerSet = new Set<string>(clankerAddrs);
+
+    // Add all Clanker addresses (always Base)
+    clankerAddrs.forEach(addr => baseAddresses.add(addr));
+
+    // Add DexScreener profiles
+    dexProfiles.forEach(item => {
+      if (item.chain === "base") {
+        baseAddresses.add(item.address);
+      } else if (item.chain === "ethereum") {
+        ethAddresses.add(item.address);
+      }
+    });
+
+    const baseArr = Array.from(baseAddresses).slice(0, 30);
+    const ethArr = Array.from(ethAddresses).slice(0, 30);
+
+    if (baseArr.length === 0 && ethArr.length === 0) {
+      console.warn("[DexScreener] No candidate tokens found.");
+      return [];
+    }
+
+    // 3. Fetch detailed pair data in parallel from DexScreener v1 tokens endpoint
+    const [baseRes, ethRes] = await Promise.allSettled([
+      baseArr.length > 0
+        ? fetchWithTimeout(`https://api.dexscreener.com/tokens/v1/base/${baseArr.join(",")}`, { cache: "no-store" })
+        : Promise.resolve(null),
+      ethArr.length > 0
+        ? fetchWithTimeout(`https://api.dexscreener.com/tokens/v1/ethereum/${ethArr.join(",")}`, { cache: "no-store" })
+        : Promise.resolve(null),
+    ]);
+
+    let rawPairs: any[] = [];
+
+    if (baseRes.status === "fulfilled" && baseRes.value && baseRes.value.ok) {
+      const json = await baseRes.value.json();
+      const pairs = Array.isArray(json) ? json : (json.pairs ?? []);
+      rawPairs = rawPairs.concat(pairs);
+    } else if (baseRes.status === "rejected") {
+      console.error("[DexScreener] Base multi-token request failed:", baseRes.reason);
+    }
+
+    if (ethRes.status === "fulfilled" && ethRes.value && ethRes.value.ok) {
+      const json = await ethRes.value.json();
+      const pairs = Array.isArray(json) ? json : (json.pairs ?? []);
+      rawPairs = rawPairs.concat(pairs);
+    } else if (ethRes.status === "rejected") {
+      console.error("[DexScreener] Ethereum multi-token request failed:", ethRes.reason);
+    }
+
+    if (rawPairs.length === 0) {
+      console.warn("[DexScreener] No pairs returned for candidates.");
+      return [];
+    }
+
+    // 4. De-duplicate pairs per token address, keeping the one with highest liquidity
+    const bestPairsByToken: Record<string, any> = {};
+    for (const pair of rawPairs) {
+      const tokenAddr = (pair.baseToken?.address ?? "").toLowerCase();
+      if (!tokenAddr) continue;
+
+      const liq = pair.liquidity?.usd ?? 0;
+      const existing = bestPairsByToken[tokenAddr];
+
+      if (!existing || liq > (existing.liquidity?.usd ?? 0)) {
+        bestPairsByToken[tokenAddr] = pair;
+      }
+    }
+
+    // 5. Score the best pairs and construct signals
+    const signals: Signal[] = [];
+    for (const tokenAddr of Object.keys(bestPairsByToken)) {
+      const pair = bestPairsByToken[tokenAddr];
+      
+      // Inject override isClanker if we got it from clanker.world list
+      if (clankerSet.has(tokenAddr)) {
+        pair.isClankerOverride = true;
+      }
+
+      try {
+        const signal = scoreToken(pair);
+        signals.push(signal);
+      } catch (err) {
+        console.error(`[DexScreener] Error scoring token ${tokenAddr}:`, err);
+      }
+    }
+
+    // 6. Sort by age (newest first, i.e. ageHours ascending)
+    const sorted = signals
+      .sort((a, b) => a.ageHours - b.ageHours)
+      .slice(0, limit);
+
+    console.log(`[DexScreener] Fetched ${sorted.length} live launches successfully.`);
+    return sorted;
+
+  } catch (e) {
+    console.error("[DexScreener] fetchMultiChainSignals error:", e);
+    return [];
+  }
 }
 
 /**

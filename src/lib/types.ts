@@ -86,9 +86,9 @@ export interface HolderInfo {
 
 // Payment tier definitions per blueprint §4.1
 export const PAYMENT_TIERS = {
-  1: { name: "Basic Signals", costHsk: 0.005, description: "20 unverified/raw token signals" },
-  2: { name: "Premium Ratings", costHsk: 1.5, description: "Tokens with 80%+ Rise Potential" },
-  3: { name: "Deep Analytics", costHsk: 0.01, description: "CA reveal, charts, KOL/smart money data (per asset)" },
+  1: { name: "Live Launches", costHsk: 0, description: "Real-time new token launches from Clanker & DexScreener" },
+  2: { name: "AI Trading Signals", costHsk: 1.5, description: "Gemini AI analyzed entry/exit signals with reasoning" },
+  3: { name: "Deep Analytics", costHsk: 0.01, description: "TradingView charts, security flags, KOL/whale holders (per asset)" },
 } as const;
 
 export type TierLevel = 1 | 2 | 3;
