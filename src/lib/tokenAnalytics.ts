@@ -282,9 +282,8 @@ async function fetchRealHolders(chain: string, contractAddress: string): Promise
       const from = ethers.getAddress("0x" + log.topics[1].slice(26));
       const to = ethers.getAddress("0x" + log.topics[2].slice(26));
       const value = BigInt(log.data === "0x" ? 0 : log.data);
-      
-      if (!balances[from]) balances[from] = 0n;
-      if (!balances[to]) balances[to] = 0n;
+      if (!balances[from]) balances[from] = BigInt(0);
+      if (!balances[to]) balances[to] = BigInt(0);
       
       balances[from] -= value;
       balances[to] += value;
@@ -296,10 +295,10 @@ async function fetchRealHolders(chain: string, contractAddress: string): Promise
     });
     const totalSupply = BigInt(totalSupplyStr === "0x" ? 0 : totalSupplyStr);
 
-    if (totalSupply === 0n) return generateHolderAnalysis();
+    if (totalSupply === BigInt(0)) return generateHolderAnalysis();
 
     const topHolders = Object.entries(balances)
-      .filter(([addr, bal]) => bal > 0n && addr !== '0x0000000000000000000000000000000000000000') // ignore zero address
+      .filter(([addr, bal]) => bal > BigInt(0) && addr !== '0x0000000000000000000000000000000000000000') // ignore zero address
       .sort((a, b) => (a[1] < b[1] ? 1 : -1))
       .slice(0, 5);
 
@@ -307,7 +306,7 @@ async function fetchRealHolders(chain: string, contractAddress: string): Promise
 
     return topHolders.map(([addr, bal], i) => ({
       address: addr.slice(0, 6) + "..." + addr.slice(-4),
-      percentage: Number((bal * 10000n) / totalSupply) / 100,
+      percentage: Number((bal * BigInt(10000)) / totalSupply) / 100,
       isSmartMoney: i < 2, // Arbitrary for visualization
       label: i === 0 ? "Top Recent Accumulator" : undefined,
       pnlPercent: Math.floor(Math.random() * 200) - 50
