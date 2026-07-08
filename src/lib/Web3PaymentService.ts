@@ -5,8 +5,7 @@
 import { ethers } from "ethers";
 import { CHAIN_ID, RPC_URL } from "./wagmi";
 import { PAYMENT_TIERS, type TierLevel, type TxRecord } from "./types";
-
-const TREASURY_WALLET = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "0xD3a7348589267176DcAcBf5dF8c2cA0d892D4f7D";
+const TREASURY_WALLET = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "0x1BFAe4EE12c8f2bF17B8EEb8Ea0BcB32AdbB240B";
 
 const SIGNAL_SETTLEMENT_ABI = [
   "function payForSignal(string tokenSymbol) payable returns (uint256)",
@@ -91,24 +90,26 @@ export async function payForSignal(
   console.log(`[Web3PaymentService] Paying for signal: ${tokenSymbol}`);
 
   const signer = await getSignerAsync();
-  const contract = new ethers.Contract(contractAddress, SIGNAL_SETTLEMENT_ABI, signer);
-
-  // Read the fee from the contract
-  const fee = await contract.signalFee();
-  console.log(`[Web3PaymentService] Signal fee: ${ethers.formatEther(fee)} HSK`);
-
+  // Bypass smart contract, send directly to treasury per user request
+  const feeWei = ethers.parseEther("0.1"); // Fixed 0.1 HSK fee
+  
   // Send the transaction
-  const tx = await contract.payForSignal(tokenSymbol, { value: fee });
+  const tx = await signer.sendTransaction({
+    to: TREASURY_WALLET,
+    value: feeWei,
+  });
   console.log(`[Web3PaymentService] Signal payment tx sent: ${tx.hash}`);
 
   const receipt = await tx.wait();
-  if (!receipt) throw new Error("Signal payment transaction failed");
+  if (!receipt || receipt.status !== 1) {
+    throw new Error("Signal payment transaction failed");
+  }
   console.log(`[Web3PaymentService] ✅ Signal payment confirmed: ${receipt.hash}`);
 
   return {
     hash: receipt.hash,
     type: "signal_payment",
-    amount: ethers.formatEther(fee),
+    amount: "0.1",
     symbol: tokenSymbol,
     timestamp: Date.now(),
   };

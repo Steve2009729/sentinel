@@ -351,13 +351,30 @@ export default function Home() {
                 >
                   <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{faq.q}</span>
-                    <span style={{ fontSize: 16, color: theme.accent }}>{activeFaq === i ? "−" : "+"}</span>
+                    <span
+                      style={{
+                        fontSize: 18,
+                        color: theme.accent,
+                        transform: activeFaq === i ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 0.3s ease",
+                        display: "inline-block"
+                      }}
+                    >
+                      {activeFaq === i ? "−" : "+"}
+                    </span>
                   </div>
-                  {activeFaq === i && (
+                  <div
+                    style={{
+                      maxHeight: activeFaq === i ? 200 : 0,
+                      opacity: activeFaq === i ? 1 : 0,
+                      overflow: "hidden",
+                      transition: "all 0.3s ease-in-out",
+                    }}
+                  >
                     <div style={{ padding: "0 20px 16px", fontSize: 13, color: theme.textSecondary, lineHeight: 1.6, borderTop: `1px solid ${theme.border}30`, paddingTop: 12 }}>
                       {faq.a}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -407,6 +424,7 @@ export default function Home() {
                 
                 <button
                   type="submit"
+                  disabled={suggestionStatus === "success"}
                   style={{
                     width: "100%",
                     background: suggestionStatus === "success" ? theme.accent : `linear-gradient(135deg, ${theme.accent}, #5B8DEF)`,
@@ -416,7 +434,7 @@ export default function Home() {
                     padding: "10px 20px",
                     fontWeight: 700,
                     fontSize: 13,
-                    cursor: "pointer",
+                    cursor: suggestionStatus === "success" ? "default" : "pointer",
                     transition: "all 0.2s"
                   }}
                 >

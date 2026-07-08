@@ -19,6 +19,9 @@ interface SentinelState {
   unlockedTiers: number[]; // [1, 2, 3]
   unlockedAssets: string[]; // contract addresses unlocked for tier 3
 
+  // Authentication
+  signedAddresses: string[]; // Wallets that have signed the auth message
+
   // Data
   signals: Signal[];
   agentResults: AgentResult[];
@@ -37,6 +40,8 @@ interface SentinelState {
   unlockAsset: (contractAddress: string) => void;
   isTierUnlocked: (tier: TierLevel) => boolean;
   isAssetUnlocked: (contractAddress: string) => boolean;
+  addSignedAddress: (address: string) => void;
+  isAddressSigned: (address: string) => boolean;
   setSignals: (signals: Signal[]) => void;
   addAgentResults: (results: AgentResult[]) => void;
   addPayment: (tx: TxRecord) => void;
@@ -53,6 +58,7 @@ const initialState = {
   demoMode: true, // Default to demo mode — most users won't have HSK
   unlockedTiers: [] as number[],
   unlockedAssets: [] as string[],
+  signedAddresses: [] as string[],
   signals: [] as Signal[],
   agentResults: [] as AgentResult[],
   paymentHistory: [] as TxRecord[],
@@ -111,6 +117,17 @@ export const useStore = create<SentinelState>()(
       isAssetUnlocked: (contractAddress) =>
         get().unlockedAssets.includes(contractAddress.toLowerCase()),
 
+      addSignedAddress: (address) => {
+        const current = get().signedAddresses;
+        if (!current.includes(address.toLowerCase())) {
+          console.log(`[Sentinel] Wallet authenticated: ${address}`);
+          set({ signedAddresses: [...current, address.toLowerCase()] });
+        }
+      },
+
+      isAddressSigned: (address) =>
+        get().signedAddresses.includes(address.toLowerCase()),
+
       setSignals: (signals) => set({ signals }),
 
       addAgentResults: (results) =>
@@ -137,6 +154,7 @@ export const useStore = create<SentinelState>()(
         walletAddress: state.walletAddress,
         unlockedTiers: state.unlockedTiers,
         unlockedAssets: state.unlockedAssets,
+        signedAddresses: state.signedAddresses,
         paymentHistory: state.paymentHistory,
         demoMode: state.demoMode,
       }),

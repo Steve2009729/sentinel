@@ -186,6 +186,37 @@ async function fetchDexScreenerLatestProfiles(): Promise<{ address: string; chai
   }
 }
 
+async function fetchDexScreenerBoosted(): Promise<{ address: string; chain: string }[]> {
+  try {
+    console.log("[DexScreener] Fetching DexScreener boosted tokens...");
+    const [topRes, latestRes] = await Promise.allSettled([
+      fetchWithTimeout("https://api.dexscreener.com/token-boosts/top/v1", { cache: "no-store" }, 6000),
+      fetchWithTimeout("https://api.dexscreener.com/token-boosts/latest/v1", { cache: "no-store" }, 6000),
+    ]);
+
+    let data: any[] = [];
+    if (topRes.status === "fulfilled" && topRes.value && topRes.value.ok) {
+      const json = await topRes.value.json();
+      data = data.concat(Array.isArray(json) ? json : []);
+    }
+    if (latestRes.status === "fulfilled" && latestRes.value && latestRes.value.ok) {
+      const json = await latestRes.value.json();
+      data = data.concat(Array.isArray(json) ? json : []);
+    }
+
+    return data
+      .filter((item: any) => item.chainId === "base" || item.chainId === "ethereum")
+      .map((item: any) => ({
+        address: (item.tokenAddress ?? "").toLowerCase(),
+        chain: item.chainId
+      }))
+      .filter((item: any) => item.address.startsWith("0x"));
+  } catch (e) {
+    console.error("[DexScreener] Failed to fetch DexScreener boosted:", e);
+    return [];
+  }
+}
+
 /**
  * Fetch live signals from DexScreener for a specific chain.
  */
@@ -203,9 +234,10 @@ export async function fetchLiveSignals(
 export async function fetchMultiChainSignals(limit: number = 20): Promise<Signal[]> {
   try {
     // 1. Fetch candidates in parallel
-    const [clankerAddrs, dexProfiles] = await Promise.all([
+    const [clankerAddrs, dexProfiles, dexBoosted] = await Promise.all([
       fetchClankerLaunches(),
-      fetchDexScreenerLatestProfiles()
+      fetchDexScreenerLatestProfiles(),
+      fetchDexScreenerBoosted()
     ]);
 
     // 2. Build candidate lists by chain
@@ -216,8 +248,9 @@ export async function fetchMultiChainSignals(limit: number = 20): Promise<Signal
     // Add all Clanker addresses (always Base)
     clankerAddrs.forEach(addr => baseAddresses.add(addr));
 
-    // Add DexScreener profiles
-    dexProfiles.forEach(item => {
+    // Add DexScreener profiles & boosted
+    const allDex = [...dexProfiles, ...dexBoosted];
+    allDex.forEach(item => {
       if (item.chain === "base") {
         baseAddresses.add(item.address);
       } else if (item.chain === "ethereum") {

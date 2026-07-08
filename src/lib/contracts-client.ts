@@ -96,6 +96,20 @@ export async function getUserBalance(): Promise<string> {
   }
 }
 
+export async function signAuthMessage(): Promise<boolean> {
+  try {
+    const signer = await getUserSigner();
+    if (!signer) return false;
+    const address = await signer.getAddress();
+    const message = `Welcome to Sentinel!\n\nPlease sign this message to authenticate your wallet.\n\nWallet: ${address}\nTimestamp: ${Date.now()}`;
+    const signature = await signer.signMessage(message);
+    return !!signature;
+  } catch (error) {
+    console.error("Signature rejected:", error);
+    return false;
+  }
+}
+
 // ─── NETWORK SWITCHING ────────────────────────────────────────────────────────
 
 export async function checkAndSwitchNetwork(): Promise<boolean> {

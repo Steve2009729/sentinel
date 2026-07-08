@@ -8,6 +8,7 @@ import {
   getUserBalance,
   setActiveProvider,
   getActiveProvider,
+  signAuthMessage,
 } from "@/lib/contracts-client";
 import { theme } from "@/lib/theme";
 import { useStore } from "@/lib/store";
@@ -183,11 +184,12 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
 
   async function checkIfConnected() {
     if (!isWalletAvailable()) return;
-    const storedAddress = useStore.getState().walletAddress;
+    const store = useStore.getState();
+    const storedAddress = store.walletAddress;
     if (!storedAddress) return; // Do not auto-connect if explicitly disconnected
 
     const addr = await getUserAddress();
-    if (addr && addr.toLowerCase() === storedAddress.toLowerCase()) {
+    if (addr && addr.toLowerCase() === storedAddress.toLowerCase() && store.isAddressSigned(addr)) {
       setAddress(addr);
       const bal = await getUserBalance();
       setBalance(bal);
@@ -212,7 +214,23 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
       setActiveProvider(wallet.provider);
       console.log(`[WalletConnect] Connecting via ${wallet.name}`);
 
-      // Switch to HashKey Chain
+      // Request accounts FIRST (fixes hang on some wallets if not connected)
+      await wallet.provider.request({ method: "eth_requestAccounts" });
+
+      const addr = await getUserAddress();
+      if (!addr) throw new Error("Failed to get address");
+
+      // Check if signed
+      const store = useStore.getState();
+      if (!store.isAddressSigned(addr)) {
+        const signed = await signAuthMessage();
+        if (!signed) {
+          throw new Error("Signature required to connect");
+        }
+        store.addSignedAddress(addr);
+      }
+
+      // Switch to HashKey Chain AFTER requesting accounts and signing
       const switched = await checkAndSwitchNetwork();
       if (!switched) {
         setChainError("Failed to switch to HashKey Chain. Please try again.");
@@ -222,10 +240,6 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
 
       await new Promise((r) => setTimeout(r, 200));
 
-      // Request accounts
-      await wallet.provider.request({ method: "eth_requestAccounts" });
-
-      const addr = await getUserAddress();
       const bal = await getUserBalance();
       setAddress(addr);
       setBalance(bal);
@@ -233,11 +247,12 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
       onConnected?.(addr);
     } catch (error: any) {
       console.error("[WalletConnect] Connection error:", error);
-      if (error.code === 4001) {
-        setChainError("Connection cancelled by user");
+      if (error.code === 4001 || error.message?.includes("Signature required")) {
+        setChainError("Connection or signature cancelled by user");
       } else {
         setChainError("Failed to connect wallet");
       }
+      setActiveProvider(null);
     } finally {
       setConnecting(false);
     }
