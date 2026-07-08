@@ -55,7 +55,7 @@ export default function Dashboard() {
   async function loadSignals() {
     setSignalsLoading(true);
     try {
-      const res = await fetch("/api/signals");
+      const res = await fetch("/api/signals", { cache: "no-store" });
       const j = await res.json();
       if (j.success) {
         setLocalSignals(j.signals ?? []);
@@ -70,7 +70,7 @@ export default function Dashboard() {
 
   async function loadStats() {
     try {
-      const res = await fetch("/api/stats");
+      const res = await fetch("/api/stats", { cache: "no-store" });
       const j = await res.json();
       if (j.success) {
         const feeHsk = Number(j.data.signalFeeWei) / 1e18;

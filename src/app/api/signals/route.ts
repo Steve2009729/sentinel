@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchMultiChainSignals } from "@/lib/dexscreener";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // Fallback signals when DexScreener is rate-limited or slow
 const FALLBACK_SIGNALS = [

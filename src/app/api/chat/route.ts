@@ -5,13 +5,13 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const { messages } = await request.json();
-    const lastMessage = messages[messages.length - 1]?.content || "";
+    const lastMessage = messages[messages.length - 1]?.text || "";
 
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (apiKey) {
       try {
-        const prompt = `You are Sentinel Copilot, a highly knowledgeable DeFi AI Analyst. Provide a brief, professional, and actionable response (max 3 sentences) to the user's query.
+        const prompt = `You are Sentinel Copilot, a highly knowledgeable DeFi AI Analyst built on HashKey Chain. You must answer questions related to Crypto, DeFi, Web3, and HashKey. If the user asks a question about ANY topic outside of crypto, DeFi, Web3, or HashKey (such as general knowledge, history, programming not related to Web3, cooking, etc.), you MUST politely decline to answer, stating that you are a specialized crypto AI and only answer questions related to the crypto market. Keep your responses brief, professional, and actionable (max 3 sentences).
 User Query: "${lastMessage}"`;
 
         const res = await fetch(
