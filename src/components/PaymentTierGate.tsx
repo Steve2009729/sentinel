@@ -40,29 +40,6 @@ export default function PaymentTierGate({
     setError("");
 
     try {
-      // In demo mode, simulate payment instantly
-      if (demoMode) {
-        await new Promise((r) => setTimeout(r, 800));
-
-        const mockTx = {
-          hash: `0xdemo${Date.now().toString(16).padStart(60, "0")}`,
-          type: "tier_unlock" as const,
-          tier,
-          amount: tierConfig.costHsk.toString(),
-          symbol: assetAddress ? "DEMO" : undefined,
-          timestamp: Date.now(),
-        };
-
-        if (tier === 3 && assetAddress) {
-          unlockAsset(assetAddress);
-        } else {
-          unlockTier(tier);
-        }
-        addPayment(mockTx);
-        setPaying(false);
-        return;
-      }
-
       // Live payment mode
       let tx;
       if (tier === 3 && assetAddress) {
@@ -87,35 +64,6 @@ export default function PaymentTierGate({
     }
   }
 
-  // Force simulated unlock if users get errors or lack HSK
-  async function forceDemoUnlock() {
-    setError("");
-    setPaying(true);
-    try {
-      setDemoMode(true);
-      await new Promise((r) => setTimeout(r, 600));
-
-      const mockTx = {
-        hash: `0xdemo${Date.now().toString(16).padStart(60, "0")}`,
-        type: "tier_unlock" as const,
-        tier,
-        amount: tierConfig.costHsk.toString(),
-        symbol: assetAddress ? "DEMO" : undefined,
-        timestamp: Date.now(),
-      };
-
-      if (tier === 3 && assetAddress) {
-        unlockAsset(assetAddress);
-      } else {
-        unlockTier(tier);
-      }
-      addPayment(mockTx);
-    } catch (err: any) {
-      setError(err.message || "Bypass simulation failed");
-    } finally {
-      setPaying(false);
-    }
-  }
 
   return (
     <div style={{ position: "relative" }}>
@@ -171,25 +119,6 @@ export default function PaymentTierGate({
             {tier === 1 ? "🔓" : tier === 2 ? "⭐" : "🔬"} Tier {tier}
           </div>
 
-          {/* Demo mode indicator */}
-          {demoMode && (
-            <div
-              style={{
-                fontSize: 10,
-                color: theme.accent,
-                background: `${theme.accent}10`,
-                border: `1px solid ${theme.accent}20`,
-                borderRadius: 6,
-                padding: "3px 10px",
-                marginBottom: 12,
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-              }}
-            >
-              Demo Mode · No HSK Required
-            </div>
-          )}
 
           <h3
             style={{
@@ -236,8 +165,6 @@ export default function PaymentTierGate({
               <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <span className="animate-blink">●</span> Processing...
               </span>
-            ) : demoMode ? (
-              `Unlock (Demo)`
             ) : (
               `Unlock for ${tierConfig.costHsk} HSK`
             )}
@@ -257,28 +184,6 @@ export default function PaymentTierGate({
               >
                 {error}
               </div>
-              <button
-                onClick={forceDemoUnlock}
-                style={{
-                  background: `${theme.accent}12`,
-                  color: theme.accent,
-                  border: `1px solid ${theme.accent}30`,
-                  borderRadius: 10,
-                  padding: "8px 12px",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  fontWeight: 700,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${theme.accent}20`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = `${theme.accent}12`;
-                }}
-              >
-                Simulate with Demo Mode instead
-              </button>
             </div>
           )}
         </div>

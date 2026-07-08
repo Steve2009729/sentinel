@@ -185,11 +185,9 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
   async function checkIfConnected() {
     if (!isWalletAvailable()) return;
     const store = useStore.getState();
-    const storedAddress = store.walletAddress;
-    if (!storedAddress) return; // Do not auto-connect if explicitly disconnected
 
     const addr = await getUserAddress();
-    if (addr && addr.toLowerCase() === storedAddress.toLowerCase() && store.isAddressSigned(addr)) {
+    if (addr && store.isAddressSigned(addr)) {
       setAddress(addr);
       const bal = await getUserBalance();
       setBalance(bal);
@@ -215,7 +213,10 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
       console.log(`[WalletConnect] Connecting via ${wallet.name}`);
 
       // Request accounts FIRST (fixes hang on some wallets if not connected)
-      await wallet.provider.request({ method: "eth_requestAccounts" });
+      await wallet.provider.request({ 
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }]
+      });
 
       const addr = await getUserAddress();
       if (!addr) throw new Error("Failed to get address");
@@ -524,27 +525,8 @@ export default function WalletConnect({ onConnected, onDisconnected }: WalletCon
                       No wallets detected
                     </div>
                     <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 16 }}>
-                      Install a Web3 wallet extension to connect, or enter the mock dashboard in demo mode.
+                      Install a Web3 wallet extension to connect.
                     </div>
-                    <button
-                      onClick={() => {
-                        setWallet(
-                          "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-                          "100.0000",
-                          999
-                        );
-                        setShowModal(false);
-                        onConnected?.("0x71C7656EC7ab88b098defB751B7401B5f6d8976F");
-                      }}
-                      className="btn-primary"
-                      style={{
-                        padding: "8px 18px",
-                        fontSize: 12,
-                        width: "100%",
-                      }}
-                    >
-                      Bypass & Enter Demo Mode
-                    </button>
                   </div>
 
                   {/* Download links */}

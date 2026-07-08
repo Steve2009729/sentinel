@@ -11,18 +11,33 @@ export async function POST(request: Request) {
 
     if (apiKey) {
       try {
-        const prompt = `You are Sentinel Copilot, a highly knowledgeable DeFi AI Analyst built on HashKey Chain. You must answer questions related to Crypto, DeFi, Web3, and HashKey. If the user asks a question about ANY topic outside of crypto, DeFi, Web3, or HashKey (such as general knowledge, history, programming not related to Web3, cooking, etc.), you MUST politely decline to answer, stating that you are a specialized crypto AI and only answer questions related to the crypto market. Keep your responses brief, professional, and actionable (max 3 sentences).
-User Query: "${lastMessage}"`;
+        // Map history to Gemini format
+        const contents = messages.map((m: any) => ({
+          role: m.sender === "user" ? "user" : "model",
+          parts: [{ text: m.text }]
+        }));
 
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { maxOutputTokens: 200 }
-            })
+              systemInstruction: {
+                parts: [
+                  {
+                    text: "You are Sentinel Copilot, a highly knowledgeable DeFi AI Analyst built on HashKey Chain. You must answer questions related to Crypto, DeFi, Web3, and HashKey. If the user asks a question about ANY topic outside of crypto, DeFi, Web3, or HashKey (such as general knowledge, history, programming not related to Web3, cooking, etc.), you MUST politely decline to answer, stating that you are a specialized crypto AI and only answer questions related to the crypto market. Keep your responses brief, professional, and actionable."
+                  }
+                ]
+              },
+              contents: contents,
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 250,
+              },
+            }),
           }
         );
 
@@ -34,6 +49,10 @@ User Query: "${lastMessage}"`;
       } catch (err: any) {
         console.error("[API /chat] Gemini Error:", err);
       }
+    } else {
+      return NextResponse.json({
+        text: "Please add your GEMINI_API_KEY in your Vercel environment variables to unlock my AI capabilities! I need it to connect to the Google server.",
+      });
     }
 
     // High fidelity fallback conversation simulator
