@@ -19,7 +19,7 @@ export default function PaymentTierGate({
 }: PaymentTierGateProps) {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
-  const { demoMode, isTierUnlocked, isAssetUnlocked, unlockTier, unlockAsset, addPayment, setDemoMode } =
+  const { isTierUnlocked, isAssetUnlocked, unlockTier, unlockAsset, addPayment } =
     useStore();
 
   // Check if already unlocked

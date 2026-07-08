@@ -12,8 +12,7 @@ interface SentinelState {
   chainId: number;
   isConnected: boolean;
 
-  // Demo mode — auto-unlock tiers when not on HashKey Chain
-  demoMode: boolean;
+
 
   // Tiers (persisted per session per wallet)
   unlockedTiers: number[]; // [1, 2, 3]
@@ -35,7 +34,7 @@ interface SentinelState {
   setWallet: (address: string, balance: string, chainId: number) => void;
   disconnectWallet: () => void;
   updateBalance: (balance: string) => void;
-  setDemoMode: (demo: boolean) => void;
+
   unlockTier: (tier: TierLevel) => void;
   unlockAsset: (contractAddress: string) => void;
   isTierUnlocked: (tier: TierLevel) => boolean;
@@ -55,7 +54,7 @@ const initialState = {
   balance: "0",
   chainId: 0,
   isConnected: false,
-  demoMode: true, // Default to demo mode — most users won't have HSK
+
   unlockedTiers: [] as number[],
   unlockedAssets: [] as string[],
   signedAddresses: [] as string[],
@@ -77,8 +76,7 @@ export const useStore = create<SentinelState>()(
           balance,
           chainId,
           isConnected: true,
-          // Auto-detect demo mode: if not on HashKey Chain (177), enable demo
-          demoMode: chainId !== 177,
+
         }),
 
       disconnectWallet: () =>
@@ -88,7 +86,7 @@ export const useStore = create<SentinelState>()(
 
       updateBalance: (balance) => set({ balance }),
 
-      setDemoMode: (demoMode) => set({ demoMode }),
+
 
       unlockTier: (tier) => {
         const current = get().unlockedTiers;
@@ -109,8 +107,7 @@ export const useStore = create<SentinelState>()(
       isTierUnlocked: (tier) => {
         // Tier 1 (Live Launches Feed) is always free
         if (tier === 1) return true;
-        // Tier 2 (AI Signals) is unlocked in demo mode
-        if (get().demoMode && tier === 2) return true;
+
         return get().unlockedTiers.includes(tier);
       },
 
@@ -156,7 +153,7 @@ export const useStore = create<SentinelState>()(
         unlockedAssets: state.unlockedAssets,
         signedAddresses: state.signedAddresses,
         paymentHistory: state.paymentHistory,
-        demoMode: state.demoMode,
+
       }),
     }
   )

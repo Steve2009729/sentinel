@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const FALLBACK_SIGNALS = [
   {
@@ -77,7 +78,7 @@ export async function POST() {
     let aiThoughts: Record<string, string> = {};
 
     if (apiKey) {
-      addStep("Step 3/4: Connecting to Google Gemini API (gemini-2.5-flash)...");
+      addStep("Step 3/4: Connecting to Google Gemini API (gemini-1.5-flash)...");
       try {
         const prompt = `You are Sentinel, a premium Web3 AI Agent. Generate a high-fidelity trade analysis (exactly 2-3 sentences) for each of the following tokens based on their metrics. Tell the user exactly why we should ENTER, WATCH, or SKIP.
 Tokens:
@@ -86,7 +87,7 @@ ${topSignals.map(s => `- ${s.symbol}: Chain=${s.chain}, Liquidity=$${s.liquidity
 Return ONLY a JSON array of objects with keys "symbol" and "analysis". No Markdown formatting wrapper.`;
 
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

@@ -20,7 +20,7 @@ type Tab = "signals" | "ai-signals" | "checker";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isConnected, setWallet, signals, setSignals, agentResults, addAgentResults, demoMode, setDemoMode, isTierUnlocked, activeTab, setActiveTab } = useStore();
+  const { isConnected, setWallet, signals, setSignals, agentResults, addAgentResults, isTierUnlocked, activeTab, setActiveTab } = useStore();
   const [walletReady, setWalletReady] = useState(false);
   const [localSignals, setLocalSignals] = useState<Signal[]>([]);
   const [localResults, setLocalResults] = useState<AgentResult[]>([]);
@@ -33,6 +33,13 @@ export default function Dashboard() {
   useEffect(() => {
     checkWalletConnection();
   }, []);
+
+  // Redirect if wallet is disconnected after loading
+  useEffect(() => {
+    if (walletReady && !isConnected) {
+      router.push("/");
+    }
+  }, [isConnected, walletReady, router]);
 
   async function checkWalletConnection() {
     if (!isWalletAvailable()) {
