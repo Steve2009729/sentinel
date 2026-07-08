@@ -18,7 +18,7 @@ export async function POST(request: Request) {
         }));
 
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: {
@@ -41,13 +41,19 @@ export async function POST(request: Request) {
           }
         );
 
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "I am processing your request.";
-          return NextResponse.json({ success: true, response: text });
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error("Gemini API Error details:", errText);
+          throw new Error(`Gemini API Error: ${res.status}`);
         }
+
+        const data = await res.json();
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I am currently analyzing the data. Please try again.";
+
+        return NextResponse.json({ text: reply });
       } catch (err: any) {
         console.error("[API /chat] Gemini Error:", err);
+        return NextResponse.json({ text: "Sorry, I encountered an error connecting to the AI server. Please try again later." });
       }
     } else {
       return NextResponse.json({

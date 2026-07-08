@@ -5,7 +5,8 @@
 import { ethers } from "ethers";
 import { CHAIN_ID, RPC_URL } from "./wagmi";
 import { PAYMENT_TIERS, type TierLevel, type TxRecord } from "./types";
-const TREASURY_WALLET = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "0x1BFAe4EE12c8f2bF17B8EEb8Ea0BcB32AdbB240B";
+// User requested EOA address to prevent contract revert errors
+const TREASURY_WALLET = "0x1BFAe4EE12c8f2bF17B8EEb8Ea0BcB32AdbB240B";
 
 const SIGNAL_SETTLEMENT_ABI = [
   "function payForSignal(string tokenSymbol) payable returns (uint256)",
