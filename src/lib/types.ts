@@ -35,9 +35,19 @@ export interface AgentResult {
   liquidityUsd: number;
   volume24h: number;
   priceChange1h: number;
+  priceChange24h?: number;
+  marketCap?: number;
+  priceUsd?: number;
+  risePct?: number;
   payHash: string;
   decisionHash: string;
   logoUrl?: string;
+  tradeUrl?: string;
+  dexscreenerUrl?: string;
+  contractAddress?: string;
+  sources?: string[];
+  isTrendingOnCoinGecko?: boolean;
+  isBoostedOnDexScreener?: boolean;
 }
 
 export interface TxRecord {
