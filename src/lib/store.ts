@@ -12,14 +12,12 @@ interface SentinelState {
   chainId: number;
   isConnected: boolean;
 
-
-
   // Tiers (persisted per session per wallet)
-  unlockedTiers: number[]; // [1, 2, 3]
-  unlockedAssets: string[]; // contract addresses unlocked for tier 3
+  unlockedTiers: number[];
+  unlockedAssets: string[];
 
   // Authentication
-  signedAddresses: string[]; // Wallets that have signed the auth message
+  signedAddresses: string[];
 
   // Data
   signals: Signal[];
@@ -34,7 +32,6 @@ interface SentinelState {
   setWallet: (address: string, balance: string, chainId: number) => void;
   disconnectWallet: () => void;
   updateBalance: (balance: string) => void;
-
   unlockTier: (tier: TierLevel) => void;
   unlockAsset: (contractAddress: string) => void;
   isTierUnlocked: (tier: TierLevel) => boolean;
@@ -54,7 +51,6 @@ const initialState = {
   balance: "0",
   chainId: 0,
   isConnected: false,
-
   unlockedTiers: [] as number[],
   unlockedAssets: [] as string[],
   signedAddresses: [] as string[],
@@ -70,44 +66,34 @@ export const useStore = create<SentinelState>()(
     (set, get) => ({
       ...initialState,
 
-      setWallet: (address, balance, chainId) =>
-        set({
-          walletAddress: address,
-          balance,
-          chainId,
-          isConnected: true,
+      setWallet: (address, balance, chainId) => {
+        set({ walletAddress: address, balance, chainId, isConnected: true });
+      },
 
-        }),
-
-      disconnectWallet: () =>
-        set({
-          ...initialState,
-        }),
+      disconnectWallet: () => {
+        const { signedAddresses } = get();
+        set({ ...initialState, signedAddresses });
+      },
 
       updateBalance: (balance) => set({ balance }),
-
-
 
       unlockTier: (tier) => {
         const current = get().unlockedTiers;
         if (!current.includes(tier)) {
-          console.log(`[Sentinel] Tier ${tier} unlocked`);
           set({ unlockedTiers: [...current, tier] });
         }
       },
 
       unlockAsset: (contractAddress) => {
         const current = get().unlockedAssets;
-        if (!current.includes(contractAddress.toLowerCase())) {
-          console.log(`[Sentinel] Asset ${contractAddress} unlocked for deep analytics`);
-          set({ unlockedAssets: [...current, contractAddress.toLowerCase()] });
+        const lower = contractAddress.toLowerCase();
+        if (!current.includes(lower)) {
+          set({ unlockedAssets: [...current, lower] });
         }
       },
 
       isTierUnlocked: (tier) => {
-        // Tier 1 (Live Launches Feed) is always free
         if (tier === 1) return true;
-
         return get().unlockedTiers.includes(tier);
       },
 
@@ -116,9 +102,9 @@ export const useStore = create<SentinelState>()(
 
       addSignedAddress: (address) => {
         const current = get().signedAddresses;
-        if (!current.includes(address.toLowerCase())) {
-          console.log(`[Sentinel] Wallet authenticated: ${address}`);
-          set({ signedAddresses: [...current, address.toLowerCase()] });
+        const lower = address.toLowerCase();
+        if (!current.includes(lower)) {
+          set({ signedAddresses: [...current, lower] });
         }
       },
 
@@ -146,14 +132,15 @@ export const useStore = create<SentinelState>()(
     {
       name: "sentinel-store",
       storage: createJSONStorage(() => localStorage),
-      // Only persist wallet-specific and tier data, not transient UI state
       partialize: (state) => ({
         walletAddress: state.walletAddress,
+        balance: state.balance,
+        chainId: state.chainId,
+        isConnected: state.isConnected,
         unlockedTiers: state.unlockedTiers,
         unlockedAssets: state.unlockedAssets,
         signedAddresses: state.signedAddresses,
         paymentHistory: state.paymentHistory,
-
       }),
     }
   )

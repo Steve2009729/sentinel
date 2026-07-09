@@ -14,7 +14,6 @@ const SIGNAL_SETTLEMENT_ABI = [
 
 // ─── PROVIDER MANAGEMENT ──────────────────────────────────────────────────────
 
-// Store the currently active provider (set by WalletConnect component)
 let activeProvider: any = null;
 
 export function setActiveProvider(provider: any) {
@@ -22,20 +21,21 @@ export function setActiveProvider(provider: any) {
 }
 
 export function getActiveProvider(): any {
-  return activeProvider || (typeof window !== "undefined" ? window.ethereum : null);
+  return activeProvider || (typeof window !== "undefined" ? (window as any).ethereum ?? null : null);
 }
 
-// Check if any wallet provider is available
+// Check if any wallet provider is available (also checks persisted state)
 export function isWalletAvailable(): boolean {
-  if (typeof window !== "undefined") {
-    try {
-      const state = JSON.parse(localStorage.getItem("sentinel-store") || "{}");
-      if (state?.state?.demoMode || state?.state?.isConnected) {
-        return true;
-      }
-    } catch {}
-  }
-  return typeof window !== "undefined" && getActiveProvider() !== null;
+  if (typeof window === "undefined") return false;
+  // Check persisted connected state first
+  try {
+    const raw = localStorage.getItem("sentinel-store");
+    if (raw) {
+      const stored = JSON.parse(raw);
+      if (stored?.state?.isConnected && stored?.state?.walletAddress) return true;
+    }
+  } catch {}
+  return getActiveProvider() !== null;
 }
 
 // ─── SIGNER & ADDRESS ─────────────────────────────────────────────────────────
@@ -55,20 +55,34 @@ export async function getUserSigner(): Promise<ethers.Signer | null> {
 export async function getUserAddress(): Promise<string> {
   const provider = getActiveProvider();
   if (!provider) {
-    if (typeof window !== "undefined") {
-      try {
-        const state = JSON.parse(localStorage.getItem("sentinel-store") || "{}");
-        return state?.state?.walletAddress || "";
-      } catch {}
-    }
+    // Fall back to persisted address
+    try {
+      const raw = localStorage.getItem("sentinel-store");
+      if (raw) {
+        const stored = JSON.parse(raw);
+        return stored?.state?.walletAddress || "";
+      }
+    } catch {}
     return "";
   }
   try {
+    // eth_accounts never triggers a popup
+    const accounts: string[] = await provider.request({ method: "eth_accounts" });
+    if (accounts?.length) return accounts[0];
+    // Fallback via ethers
     const bp = new ethers.BrowserProvider(provider);
     const signer = await bp.getSigner();
     return await signer.getAddress();
   } catch (e) {
     console.error("Failed to get address:", e);
+    // Last resort: persisted
+    try {
+      const raw = localStorage.getItem("sentinel-store");
+      if (raw) {
+        const stored = JSON.parse(raw);
+        return stored?.state?.walletAddress || "";
+      }
+    } catch {}
     return "";
   }
 }
@@ -76,12 +90,13 @@ export async function getUserAddress(): Promise<string> {
 export async function getUserBalance(): Promise<string> {
   const provider = getActiveProvider();
   if (!provider) {
-    if (typeof window !== "undefined") {
-      try {
-        const state = JSON.parse(localStorage.getItem("sentinel-store") || "{}");
-        return state?.state?.balance || "100.0000";
-      } catch {}
-    }
+    try {
+      const raw = localStorage.getItem("sentinel-store");
+      if (raw) {
+        const stored = JSON.parse(raw);
+        return stored?.state?.balance || "0";
+      }
+    } catch {}
     return "0";
   }
   try {
@@ -92,6 +107,13 @@ export async function getUserBalance(): Promise<string> {
     return ethers.formatEther(balance);
   } catch (e) {
     console.error("Failed to get balance:", e);
+    try {
+      const raw = localStorage.getItem("sentinel-store");
+      if (raw) {
+        const stored = JSON.parse(raw);
+        return stored?.state?.balance || "0";
+      }
+    } catch {}
     return "0";
   }
 }
@@ -101,7 +123,7 @@ export async function signAuthMessage(): Promise<boolean> {
     const signer = await getUserSigner();
     if (!signer) return false;
     const address = await signer.getAddress();
-    const message = `Welcome to Sentinel!\n\nPlease sign this message to authenticate your wallet.\n\nWallet: ${address}\nTimestamp: ${Date.now()}`;
+    const message = `Welcome to Sentinel!\n\nSign to authenticate your wallet.\n\nWallet: ${address}\nTimestamp: ${Date.now()}`;
     const signature = await signer.signMessage(message);
     return !!signature;
   } catch (error) {
@@ -119,19 +141,13 @@ export async function checkAndSwitchNetwork(): Promise<boolean> {
     let networkChainId: number | null = null;
     try {
       const chainIdHex = await provider.request({ method: "eth_chainId" });
-      if (typeof chainIdHex === "string") {
-        networkChainId = chainIdHex.startsWith("0x") ? parseInt(chainIdHex, 16) : Number(chainIdHex);
-      } else {
-        networkChainId = Number(chainIdHex);
-      }
+      networkChainId = typeof chainIdHex === "string"
+        ? (chainIdHex.startsWith("0x") ? parseInt(chainIdHex, 16) : Number(chainIdHex))
+        : Number(chainIdHex);
     } catch {
       const bp = new ethers.BrowserProvider(provider);
       const network = await bp.getNetwork();
-      const cid: any = network.chainId;
-      if (typeof cid === "bigint") networkChainId = Number(cid);
-      else if (typeof cid === "number") networkChainId = cid;
-      else if (typeof cid === "string" && cid.startsWith("0x")) networkChainId = parseInt(cid, 16);
-      else networkChainId = Number(cid ?? 0);
+      networkChainId = Number(network.chainId);
     }
 
     if (networkChainId === CHAIN_ID) return true;
@@ -143,22 +159,20 @@ export async function checkAndSwitchNetwork(): Promise<boolean> {
     return true;
   } catch (error: any) {
     if (error?.code === -32002) {
-      console.warn("Request already pending in wallet UI (code -32002)");
+      console.warn("Switch request already pending");
       return false;
     }
     if (error?.code === 4902) {
       try {
         await provider.request({
           method: "wallet_addEthereumChain",
-          params: [
-            {
-              chainId: `0x${CHAIN_ID.toString(16)}`,
-              chainName: "HashKey Chain",
-              rpcUrls: [RPC_URL],
-              blockExplorerUrls: ["https://hashkey.blockscout.com"],
-              nativeCurrency: { name: "HSK", symbol: "HSK", decimals: 18 },
-            },
-          ],
+          params: [{
+            chainId: `0x${CHAIN_ID.toString(16)}`,
+            chainName: "HashKey Chain",
+            rpcUrls: [RPC_URL],
+            blockExplorerUrls: ["https://hashkey.blockscout.com"],
+            nativeCurrency: { name: "HSK", symbol: "HSK", decimals: 18 },
+          }],
         });
         return true;
       } catch (addError) {
@@ -173,46 +187,23 @@ export async function checkAndSwitchNetwork(): Promise<boolean> {
 
 // ─── CONTRACT INTERACTIONS ────────────────────────────────────────────────────
 
-export async function payForSignalWithUserWallet(
-  contractAddress: string,
-  tokenSymbol: string
-): Promise<string> {
+export async function payForSignalWithUserWallet(contractAddress: string, tokenSymbol: string): Promise<string> {
   const signer = await getUserSigner();
   if (!signer) throw new Error("No signer available");
-  
-  const contract = new ethers.Contract(
-    contractAddress,
-    SIGNAL_SETTLEMENT_ABI,
-    signer
-  );
-  
+  const contract = new ethers.Contract(contractAddress, SIGNAL_SETTLEMENT_ABI, signer);
   const fee = await contract.signalFee();
   const tx = await contract.payForSignal(tokenSymbol, { value: fee });
   const receipt = await tx.wait();
-  
   if (!receipt) throw new Error("Transaction failed");
   return receipt.hash;
 }
 
-export async function logDecisionWithUserWallet(
-  contractAddress: string,
-  tokenSymbol: string,
-  score: number,
-  action: string,
-  reasoning: string
-): Promise<string> {
+export async function logDecisionWithUserWallet(contractAddress: string, tokenSymbol: string, score: number, action: string, reasoning: string): Promise<string> {
   const signer = await getUserSigner();
   if (!signer) throw new Error("No signer available");
-  
-  const contract = new ethers.Contract(
-    contractAddress,
-    SIGNAL_SETTLEMENT_ABI,
-    signer
-  );
-  
+  const contract = new ethers.Contract(contractAddress, SIGNAL_SETTLEMENT_ABI, signer);
   const tx = await contract.logDecision(tokenSymbol, score, action, reasoning);
   const receipt = await tx.wait();
-  
   if (!receipt) throw new Error("Transaction failed");
   return receipt.hash;
 }

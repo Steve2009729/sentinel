@@ -519,8 +519,10 @@ body {
 @media (max-width: 768px) {
   .dashboard-header {
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 10px !important;
     align-items: stretch !important;
+    padding: 12px 14px !important;
+    margin: 8px 8px 0 !important;
   }
 
   .dashboard-header-actions {
@@ -532,13 +534,41 @@ body {
     grid-template-columns: 1fr 1fr !important;
   }
 
-  .signal-grid {
+  /* Landing nav links hidden on mobile */
+  .landing-nav-links {
+    display: none !important;
+  }
+
+  /* Hero title */
+  h1 { font-size: clamp(40px, 10vw, 60px) !important; }
+
+  /* Pricing / about grid */
+  section > div[style*="gridTemplateColumns"] {
     grid-template-columns: 1fr !important;
+  }
+
+  /* FAQ grid */
+  section[id="faq"] > div > div {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Dashboard grid stacks fully */
+  .dashboard-grid aside {
+    order: -1;
   }
 }
 
 @media (max-width: 480px) {
   .stats-bar {
     grid-template-columns: 1fr !important;
+  }
+
+  main {
+    padding: 12px 10px 32px !important;
+  }
+
+  .wallet-connect-btn {
+    padding: 12px 24px !important;
+    font-size: 14px !important;
   }
 }

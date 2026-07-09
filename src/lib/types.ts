@@ -13,9 +13,15 @@ export interface Signal {
   score: number;
   action: string;
   reasoning: string;
+  risePct?: number;            // Projected rise % estimate
   pairAddress: string;
   contractAddress: string;
   isClanker: boolean;
+  isZyno?: boolean;
+  logoUrl?: string;
+  tradeUrl?: string;           // Direct Uniswap/DEX swap link
+  explorerUrl?: string;        // Basescan / Etherscan link
+  dexscreenerUrl?: string;     // DexScreener chart link
 }
 
 export interface AgentResult {
@@ -31,6 +37,7 @@ export interface AgentResult {
   priceChange1h: number;
   payHash: string;
   decisionHash: string;
+  logoUrl?: string;
 }
 
 export interface TxRecord {
@@ -86,9 +93,9 @@ export interface HolderInfo {
 
 // Payment tier definitions per blueprint §4.1
 export const PAYMENT_TIERS = {
-  1: { name: "Live Launches", costHsk: 0, description: "Real-time new token launches from Clanker & DexScreener" },
-  2: { name: "AI Trading Signals", costHsk: 0.1, description: "Gemini AI analyzed entry/exit signals with reasoning" },
-  3: { name: "Deep Analytics", costHsk: 0.001, description: "TradingView charts, security flags, KOL/whale holders (per asset)" },
+  1: { name: "Live Launches", costHsk: 0, description: "Real-time new token launches from Clanker, DexScreener & Zyno" },
+  2: { name: "AI Trading Signals", costHsk: 2, description: "Gemini AI analyzed entry/exit signals with % rise predictions and reasoning" },
+  3: { name: "Deep Analytics", costHsk: 1, description: "Line charts, security audit, KOL/whale holders, full token metrics (per asset)" },
 } as const;
 
 export type TierLevel = 1 | 2 | 3;
