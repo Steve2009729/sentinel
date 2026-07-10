@@ -1,11 +1,4 @@
 {
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "functions": {
-    "api/run-agent": { "maxDuration": 55 },
-    "api/chat": { "maxDuration": 30 },
-    "api/token/[address]": { "maxDuration": 30 },
-    "api/signals": { "maxDuration": 20 },
-    "api/stats": { "maxDuration": 15 }
-  }
+  "regions": ["iad1"]
 }
