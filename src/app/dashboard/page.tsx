@@ -27,6 +27,8 @@ export default function Dashboard() {
     isTierUnlocked, activeTab, setActiveTab,
   } = useStore();
 
+  const isDemoMode = useStore((s) => s.isDemoMode);
+  const exitDemoMode = useStore((s) => s.exitDemoMode);
   const tier2Unlocked = isTierUnlocked(2);
 
   const [walletReady, setWalletReady] = useState(false);
@@ -56,8 +58,18 @@ export default function Dashboard() {
   }, []);
 
   async function initDashboard() {
-    // Check persisted connection first (fast path)
     const store = useStore.getState();
+
+    // Demo mode — skip all wallet checks
+    if (store.isDemoMode) {
+      setWalletReady(true);
+      setLoading(false);
+      loadSignals();
+      loadStats();
+      return;
+    }
+
+    // Check persisted connection first (fast path)
     if (store.isConnected && store.walletAddress) {
       setWalletReady(true);
       setLoading(false);
@@ -82,13 +94,13 @@ export default function Dashboard() {
     loadStats();
   }
 
-  // Redirect on disconnect — but debounce so single-page navigation doesn't false-trigger
+  // Redirect on disconnect — skip for demo mode
   useEffect(() => {
     if (!walletReady) return;
-    if (!isConnected) {
+    if (!isConnected && !isDemoMode) {
       router.replace("/");
     }
-  }, [isConnected, walletReady]);
+  }, [isConnected, isDemoMode, walletReady]);
 
   // ─── SIGNAL REFRESH (60 seconds) ────────────────────────────────────────────
 
@@ -247,11 +259,7 @@ export default function Dashboard() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Sentinel logo — click to go back to landing page */}
-          <a
-            href="/"
-            style={{ textDecoration: "none", cursor: "pointer" }}
-            title="Back to home"
-          >
+          <a href="/" style={{ textDecoration: "none", cursor: "pointer" }} title="Back to home">
             <div className="gradient-text-large" style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.5px" }}>Sentinel</div>
             <div style={{ fontSize: 10, color: theme.muted }}>AI Signal Terminal · HashKey Chain</div>
           </a>
@@ -259,6 +267,11 @@ export default function Dashboard() {
             <div className="live-dot" style={{ width: 5, height: 5 }} />
             {chainMeta().name}
           </div>
+          {isDemoMode && (
+            <div className="neon-badge neon-badge-yellow" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              🎮 Demo Mode
+            </div>
+          )}
         </div>
 
         <div className="dashboard-header-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -270,7 +283,17 @@ export default function Dashboard() {
               {running ? <><span className="animate-blink">●</span> Thinking…</> : <><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21" /></svg> Run Agent</>}
             </button>
           )}
-          <WalletConnect onDisconnected={() => router.replace("/")} />
+          {isDemoMode ? (
+            <button
+              onClick={() => { exitDemoMode(); router.replace("/"); }}
+              className="btn-secondary"
+              style={{ padding: "7px 14px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
+            >
+              ← Exit Demo
+            </button>
+          ) : (
+            <WalletConnect onDisconnected={() => router.replace("/")} />
+          )}
         </div>
       </header>
 

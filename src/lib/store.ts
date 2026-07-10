@@ -11,6 +11,7 @@ interface SentinelState {
   balance: string;
   chainId: number;
   isConnected: boolean;
+  isDemoMode: boolean; // true when user entered via "Try Demo"
 
   // Tiers (persisted per session per wallet)
   unlockedTiers: number[];
@@ -43,6 +44,8 @@ interface SentinelState {
   addPayment: (tx: TxRecord) => void;
   setLoading: (loading: boolean) => void;
   setActiveTab: (tab: "signals" | "ai-signals" | "checker") => void;
+  enterDemoMode: () => void;
+  exitDemoMode: () => void;
   reset: () => void;
 }
 
@@ -51,6 +54,7 @@ const initialState = {
   balance: "0",
   chainId: 0,
   isConnected: false,
+  isDemoMode: false,
   unlockedTiers: [] as number[],
   unlockedAssets: [] as string[],
   signedAddresses: [] as string[],
@@ -135,6 +139,20 @@ export const useStore = create<SentinelState>()(
 
       setActiveTab: (activeTab) => set({ activeTab }),
 
+      // Unlock all tiers for demo — no wallet, no payment
+      enterDemoMode: () => set({
+        isDemoMode: true,
+        isConnected: true,
+        walletAddress: "0xDem0...M0de",
+        balance: "999.0",
+        chainId: 177,
+        unlockedTiers: [1, 2, 3],
+      }),
+
+      exitDemoMode: () => set({
+        ...initialState,
+      }),
+
       reset: () => set(initialState),
     }),
     {
@@ -145,6 +163,7 @@ export const useStore = create<SentinelState>()(
         balance: state.balance,
         chainId: state.chainId,
         isConnected: state.isConnected,
+        isDemoMode: state.isDemoMode,
         unlockedTiers: state.unlockedTiers,
         unlockedAssets: state.unlockedAssets,
         signedAddresses: state.signedAddresses,

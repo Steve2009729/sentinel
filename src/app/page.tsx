@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { theme } from "@/lib/theme";
+import { useStore } from "@/lib/store";
 import WalletConnect from "@/components/WalletConnect";
 import LiveToasts from "@/components/LiveToasts";
 
@@ -25,12 +26,13 @@ function ParticleField() {
 
 export default function Home() {
   const router = useRouter();
+  const { enterDemoMode } = useStore();
   const [mounted, setMounted] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [navScrolled, setNavScrolled] = useState(false);
   const [email, setEmail] = useState(""); const [subject, setSubject] = useState(""); const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle"|"sending"|"success"|"error">("idle"); const [feedbackMsg, setFeedbackMsg] = useState("");
-  const [suggestion, setSuggestion] = useState(""); const [suggestionStatus, setSuggestionStatus] = useState<"idle"|"success">("idle");
+  const [showDemoTerms, setShowDemoTerms] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -41,6 +43,12 @@ export default function Home() {
 
   const handleConnected = useCallback(() => { router.push("/dashboard"); }, [router]);
 
+  function handleDemoAccept() {
+    setShowDemoTerms(false);
+    enterDemoMode();
+    router.push("/dashboard");
+  }
+
   async function handleContactSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !message) { setStatus("error"); setFeedbackMsg("Please fill out all required fields."); return; }
@@ -48,10 +56,6 @@ export default function Home() {
     await new Promise((r) => setTimeout(r, 900));
     if (typeof window !== "undefined") window.location.href = `mailto:stephenokunlola59@gmail.com?subject=${encodeURIComponent(subject||"Sentinel Inquiry")}&body=${encodeURIComponent(`From: ${email}\n\n${message}`)}`;
     setStatus("success"); setFeedbackMsg("Redirecting to your email client…"); setEmail(""); setSubject(""); setMessage("");
-  }
-  async function handleSuggestionSubmit(e: React.FormEvent) {
-    e.preventDefault(); if (!suggestion.trim()) return;
-    setSuggestionStatus("success"); setTimeout(() => { setSuggestion(""); setSuggestionStatus("idle"); }, 3000);
   }
 
   if (!mounted) return <div style={{ minHeight: "100vh", background: theme.bg }} />;
@@ -106,7 +110,33 @@ export default function Home() {
           </div>
 
           <WalletConnect onConnected={handleConnected} />
-          <p style={{ color: theme.muted, fontSize: 12, marginTop: 14 }}>Connect your wallet to access the full AI-powered trading terminal</p>
+
+          {/* Demo mode button */}
+          <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+            <button
+              onClick={() => setShowDemoTerms(true)}
+              style={{
+                background: "transparent",
+                border: `1px solid ${theme.border}`,
+                color: theme.textSecondary,
+                padding: "10px 28px",
+                borderRadius: 12,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${theme.accent}50`; e.currentTarget.style.color = theme.text; e.currentTarget.style.background = `${theme.accent}08`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textSecondary; e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ fontSize: 16 }}>🎮</span>
+              Try Live Demo — No Wallet Needed
+            </button>
+          </div>
+          <p style={{ color: theme.muted, fontSize: 12, marginTop: 10 }}>Connect your wallet to access the full AI-powered trading terminal</p>
 
           <div style={{ marginTop: 44, display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap" }}>
             {[{v:"60s",l:"Signal Refresh"},{v:"AI",l:"Gemini 2.5"},{v:"Multi",l:"Chain"},{v:"On-Chain",l:"Settlements"}].map((s,i) => (
@@ -289,15 +319,133 @@ export default function Home() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer style={{ borderTop: `1px solid ${theme.border}`, padding: "28px 20px", textAlign: "center", position: "relative", zIndex: 10 }}>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span className="gradient-text-large" style={{ fontWeight: 900, fontSize: 16 }}>Sentinel</span>
-          <span style={{ color: theme.border }}>·</span>
-          <span style={{ fontSize: 12, color: theme.muted }}>© {new Date().getFullYear()} Sentinel AI Terminal. All rights reserved.</span>
-          <span style={{ color: theme.border }}>·</span>
-          <a href="https://hashkey.blockscout.com" target="_blank" rel="noreferrer" style={{ fontSize: 12, color: theme.muted, textDecoration: "none" }}>HashKey Explorer</a>
+      <footer style={{ borderTop: `1px solid ${theme.border}`, padding: "32px 20px", position: "relative", zIndex: 10 }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          {/* Top row — branding + links */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            {/* Brand */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 20 }}>⚡</span>
+              <span className="gradient-text-large" style={{ fontWeight: 900, fontSize: 18 }}>Sentinel</span>
+              <span style={{ fontSize: 11, color: theme.muted, marginLeft: 4 }}>AI Signal Terminal</span>
+            </div>
+            {/* Footer links */}
+            <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+              <a href="#features" style={{ fontSize: 12, color: theme.muted, textDecoration: "none" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = theme.text} onMouseLeave={(e) => e.currentTarget.style.color = theme.muted}>Features</a>
+              <a href="#pricing" style={{ fontSize: 12, color: theme.muted, textDecoration: "none" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = theme.text} onMouseLeave={(e) => e.currentTarget.style.color = theme.muted}>Pricing</a>
+              <a href="#faq" style={{ fontSize: 12, color: theme.muted, textDecoration: "none" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = theme.text} onMouseLeave={(e) => e.currentTarget.style.color = theme.muted}>FAQ</a>
+              <a href="https://hashkey.blockscout.com" target="_blank" rel="noreferrer" style={{ fontSize: 12, color: theme.muted, textDecoration: "none" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = theme.text} onMouseLeave={(e) => e.currentTarget.style.color = theme.muted}>HashKey Explorer</a>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: theme.border, marginBottom: 20 }} />
+
+          {/* Bottom row — copyright + GitHub + T&C */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <span style={{ fontSize: 12, color: theme.muted }}>
+              © {new Date().getFullYear()} Sentinel AI Terminal. All rights reserved. Built on HashKey Chain.
+            </span>
+
+            {/* GitHub + T&C grouped together so they don't look alone */}
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {/* Terms & Conditions */}
+              <button
+                onClick={() => setShowDemoTerms(true)}
+                style={{ background: "transparent", border: "none", color: theme.muted, fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}
+                onMouseEnter={(e) => e.currentTarget.style.color = theme.text}
+                onMouseLeave={(e) => e.currentTarget.style.color = theme.muted}
+              >
+                Terms & Conditions
+              </button>
+              <span style={{ color: theme.border }}>·</span>
+              {/* GitHub icon */}
+              <a
+                href="https://github.com/Steve2009729/sentinel"
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: "flex", alignItems: "center", gap: 6, color: theme.muted, textDecoration: "none", fontSize: 12, transition: "color 0.2s" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = theme.text}
+                onMouseLeave={(e) => e.currentTarget.style.color = theme.muted}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-label="GitHub">
+                  <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z" />
+                </svg>
+                GitHub
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
+
+      {/* ─── DEMO TERMS MODAL ─── */}
+      {showDemoTerms && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20, animation: "fadeIn 0.2s ease-out" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDemoTerms(false); }}
+        >
+          <div className="animate-fadeInScale" style={{ background: "linear-gradient(180deg, #0D0F1A 0%, #080A14 100%)", border: `1px solid ${theme.border}`, borderRadius: 24, padding: 32, maxWidth: 480, width: "100%", position: "relative", overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}>
+            <div style={{ position: "absolute", inset: 0, borderRadius: 24, pointerEvents: "none", background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,160,0.012) 2px, rgba(0,229,160,0.012) 4px)" }} />
+            <div style={{ position: "relative", zIndex: 1 }}>
+              {/* Header */}
+              <div style={{ textAlign: "center", marginBottom: 24 }}>
+                <div style={{ display: "inline-flex", padding: 12, background: "rgba(0,229,160,0.08)", borderRadius: 14, border: "1px solid rgba(0,229,160,0.2)", marginBottom: 14, fontSize: 28 }}>🎮</div>
+                <h2 style={{ fontSize: 22, fontWeight: 900, color: theme.text, margin: "0 0 8px" }}>Demo Mode</h2>
+                <p style={{ fontSize: 13, color: theme.muted, margin: 0 }}>Free access to all Sentinel features — no wallet required</p>
+              </div>
+
+              {/* What you get */}
+              <div style={{ background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: theme.accent, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>What you get in Demo Mode</div>
+                {[
+                  { i: "📡", t: "Live token launches feed — Base & Ethereum" },
+                  { i: "🤖", t: "AI signal analysis with rise % projections" },
+                  { i: "🔍", t: "Deep analytics — charts, security audits, holder data" },
+                  { i: "💬", t: "AI Copilot — DeFi research assistant" },
+                  { i: "↗", t: "Trade buttons linking to Uniswap/HSKSwap" },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: theme.textSecondary, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>{item.i}</span>
+                    <span>{item.t}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* T&C text */}
+              <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.6, marginBottom: 24, padding: "12px 14px", background: `${theme.warning}06`, border: `1px solid ${theme.warning}20`, borderRadius: 10 }}>
+                <strong style={{ color: theme.warning }}>Terms & Conditions:</strong> Demo mode is for evaluation purposes only.
+                No real wallet is connected and no on-chain transactions will be executed.
+                Signals and analytics shown are live market data for informational purposes only.
+                This is not financial advice. Always do your own research before trading.
+                Demo sessions are not saved — tier unlocks will reset when you close the browser.
+                By continuing, you confirm you are at least 18 years old and understand the risks of crypto trading.
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <button
+                  onClick={() => setShowDemoTerms(false)}
+                  style={{ padding: "11px 20px", borderRadius: 10, background: "transparent", border: `1px solid ${theme.border}`, color: theme.muted, fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${theme.accent}30`; e.currentTarget.style.color = theme.text; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.muted; }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDemoAccept}
+                  style={{ padding: "11px 20px", borderRadius: 10, background: `linear-gradient(135deg, ${theme.accent}, #5B8DEF)`, border: "none", color: "#06070D", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: `0 4px 20px ${theme.accent}30` }}
+                >
+                  <span>🎮</span> I Agree — Enter Demo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
