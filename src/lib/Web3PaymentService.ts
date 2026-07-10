@@ -29,7 +29,46 @@ const SIGNAL_SETTLEMENT_ABI = [
 function getProviderOrThrow(): any {
   if (typeof window === "undefined") throw new Error("Cannot use wallet in server context");
   const { getActiveProvider } = require("./contracts-client");
-  const provider = getActiveProvider();
+  
+  // First try the explicitly set active provider (from WalletConnect component)
+  let provider = getActiveProvider();
+  
+  // If no active provider set, try to find the right one from window
+  if (!provider) {
+    // Check if there's a persisted wallet address we can match
+    let connectedAddress = "";
+    try {
+      const raw = localStorage.getItem("sentinel-store");
+      if (raw) {
+        const stored = JSON.parse(raw);
+        connectedAddress = stored?.state?.walletAddress?.toLowerCase() || "";
+      }
+    } catch {}
+
+    // Try window.ethereum providers array (EIP-6963 multi-wallet)
+    const win = window as any;
+    
+    // Some wallets expose a providers array
+    if (win.ethereum?.providers?.length) {
+      // Find the provider that has the connected address
+      for (const p of win.ethereum.providers) {
+        try {
+          const accounts = p._state?.accounts || p.selectedAddress ? [p.selectedAddress] : [];
+          if (connectedAddress && accounts.some((a: string) => a?.toLowerCase() === connectedAddress)) {
+            provider = p;
+            break;
+          }
+        } catch {}
+      }
+      // Fallback to first provider that isn't Trust Wallet if no match
+      if (!provider) {
+        provider = win.ethereum.providers.find((p: any) => !p.isTrust) || win.ethereum.providers[0];
+      }
+    } else {
+      provider = win.ethereum;
+    }
+  }
+  
   if (!provider) throw new Error("No wallet connected. Please connect a wallet first.");
   return provider;
 }
@@ -37,7 +76,29 @@ function getProviderOrThrow(): any {
 async function getSignerAsync(): Promise<ethers.JsonRpcSigner> {
   const provider = getProviderOrThrow();
   const bp = new ethers.BrowserProvider(provider);
-  return bp.getSigner();
+  const signer = await bp.getSigner();
+  
+  // Verify we got the right wallet address
+  const signerAddress = await signer.getAddress();
+  let expectedAddress = "";
+  try {
+    const raw = localStorage?.getItem("sentinel-store");
+    if (raw) {
+      const stored = JSON.parse(raw);
+      expectedAddress = stored?.state?.walletAddress || "";
+    }
+  } catch {}
+  
+  if (expectedAddress && signerAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
+    // Wrong wallet — try to get the right one by requesting accounts explicitly
+    console.warn(`[Payment] Signer mismatch: got ${signerAddress}, expected ${expectedAddress}`);
+    // This will trigger wallet to show account selector if multiple accounts
+    await provider.request({ method: "eth_requestAccounts" });
+    const correctedSigner = await bp.getSigner();
+    return correctedSigner;
+  }
+  
+  return signer;
 }
 
 /**

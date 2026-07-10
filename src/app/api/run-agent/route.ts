@@ -185,12 +185,12 @@ export async function POST() {
       log(`  › ${p.symbol} on ${p.chain.toUpperCase()} — ${p.sc}/100 — ${action(p.sc)}${p.isCg?" [CoinGecko🔥]":""}${p.isDex?" [DexScreener⚡]":""}`);
     });
 
-    // ── Gemini (only if budget allows: <7s elapsed so far) ───────────────────
+    // ── Gemini (only if budget allows — up to 6s elapsed) ────────────────────
     const elapsed2 = Date.now() - t0;
     const apiKey = process.env.GEMINI_API_KEY;
     const geminiAnalyses: Record<string, string> = {};
 
-    if (apiKey && elapsed2 < 4000) {
+    if (apiKey && elapsed2 < 6000) {
       log("Step 3/3: Sending to Google Gemini for deep analysis…");
       try {
         const prompt = `You are Sentinel AI — elite on-chain trading analyst. Analyze EACH token. Return ONLY a raw JSON array, no markdown.
@@ -202,7 +202,7 @@ Each element: {"symbol":string,"analysis":string,"risePct":number,"timeframe":st
 Keep analysis to 2 sentences. Be specific about why it's moving.`;
 
         const ctrl = new AbortController();
-        const gid = setTimeout(() => ctrl.abort(), 3000); // 3s hard cap for Gemini
+        const gid = setTimeout(() => ctrl.abort(), 4500); // 4.5s cap for Gemini
         const gr = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {
