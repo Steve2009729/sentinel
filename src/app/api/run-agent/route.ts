@@ -87,13 +87,13 @@ export async function POST() {
     log("🔍 Sentinel AI Research Agent initializing…");
     log("📡 Scanning GeckoTerminal · DexScreener · CoinGecko in parallel (4s budget)…");
 
-    // ── Fetch everything in parallel, all with strict 4s timeouts ────────────
+    // ── Fetch everything in parallel, all with strict 2.5s timeouts ─────────
     const [gtBase, gtEth, dexTop, dexLatest, cgTrend] = await Promise.all([
-      tFetch("https://api.geckoterminal.com/api/v2/networks/base/trending_pools?include=base_token&page=1", 4000),
-      tFetch("https://api.geckoterminal.com/api/v2/networks/eth/trending_pools?include=base_token&page=1", 4000),
-      tFetch("https://api.dexscreener.com/token-boosts/top/v1", 3000),
-      tFetch("https://api.dexscreener.com/token-boosts/latest/v1", 3000),
-      tFetch("https://api.coingecko.com/api/v3/search/trending", 3000),
+      tFetch("https://api.geckoterminal.com/api/v2/networks/base/trending_pools?include=base_token&page=1", 2500),
+      tFetch("https://api.geckoterminal.com/api/v2/networks/eth/trending_pools?include=base_token&page=1", 2500),
+      tFetch("https://api.dexscreener.com/token-boosts/top/v1", 2000),
+      tFetch("https://api.dexscreener.com/token-boosts/latest/v1", 2000),
+      tFetch("https://api.coingecko.com/api/v3/search/trending", 2000),
     ]);
 
     const elapsed1 = Date.now() - t0;
@@ -190,7 +190,7 @@ export async function POST() {
     const apiKey = process.env.GEMINI_API_KEY;
     const geminiAnalyses: Record<string, string> = {};
 
-    if (apiKey && elapsed2 < 5500) {
+    if (apiKey && elapsed2 < 4000) {
       log("Step 3/3: Sending to Google Gemini for deep analysis…");
       try {
         const prompt = `You are Sentinel AI — elite on-chain trading analyst. Analyze EACH token. Return ONLY a raw JSON array, no markdown.
@@ -202,7 +202,7 @@ Each element: {"symbol":string,"analysis":string,"risePct":number,"timeframe":st
 Keep analysis to 2 sentences. Be specific about why it's moving.`;
 
         const ctrl = new AbortController();
-        const gid = setTimeout(() => ctrl.abort(), 4000); // 4s hard cap for Gemini
+        const gid = setTimeout(() => ctrl.abort(), 3000); // 3s hard cap for Gemini
         const gr = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {

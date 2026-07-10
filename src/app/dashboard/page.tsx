@@ -175,27 +175,34 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json" },
       });
 
-      // Always try to parse — even error responses may have useful info
       let j: any = {};
       try { j = await res.json(); } catch {}
 
-      if (j.success && j.results?.length > 0) {
-        setLocalResults(j.results ?? []);
-        addAgentResults(j.results ?? []);
+      if (j.results?.length > 0) {
+        // success=true OR success=false with fallback results — both are fine
+        setLocalResults(j.results);
+        addAgentResults(j.results);
         setSteps(j.steps ?? []);
         setLastAgentRun(new Date());
+        setAgentError(""); // clear any previous error
         await loadStats();
+      } else if (j.steps?.length > 0) {
+        // Got steps but no results — rate-limited, show steps at least
+        setSteps(j.steps);
+        setAgentError(j.error || "No signals returned — markets may be quiet. Try again in 30 seconds.");
       } else {
-        // Show error in the terminal — not a blank page
-        const errMsg = j.error || "Agent cycle returned no results. Markets may be quiet or APIs are rate-limited. Try again in a moment.";
-        setAgentError(errMsg);
-        setSteps(j.steps ?? [`[${new Date().toLocaleTimeString()}] ❌ ${errMsg}`]);
+        setAgentError("Agent timed out. Showing last known signals below.");
+        // Keep whatever results were previously shown — don't blank them out
       }
     } catch (e: any) {
-      const msg = `Network error: ${e.message || "Could not reach the server"}. Check your connection and try again.`;
-      setAgentError(msg);
-      setSteps([`[${new Date().toLocaleTimeString()}] ❌ ${msg}`]);
-      console.error("[Dashboard] Run cycle error:", e);
+      // Network-level error (Vercel timeout) — don't blank the screen
+      console.error("[Dashboard] Run cycle network error:", e);
+      setAgentError("Connection timed out. Your results from the last cycle are still shown below.");
+      // Show fallback steps so the terminal doesn't look empty
+      setSteps([
+        `[${new Date().toLocaleTimeString("en-US",{hour12:false})}] ⚠️ Request timed out — Vercel free plan limit reached.`,
+        `[${new Date().toLocaleTimeString("en-US",{hour12:false})}] 💡 Showing last cycle results. Try again in 30 seconds.`,
+      ]);
     } finally {
       setRunning(false);
     }
@@ -345,19 +352,16 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Error state — clear, not a blank page */}
-                  {agentError && !running && localResults.length === 0 && (
-                    <div style={{ background: `${theme.warning}08`, border: `1px solid ${theme.warning}30`, borderRadius: 14, padding: 20 }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                        <span style={{ fontSize: 22, flexShrink: 0 }}>⚠️</span>
-                        <div>
-                          <div style={{ fontWeight: 700, color: theme.text, marginBottom: 6 }}>Agent cycle encountered an issue</div>
-                          <div style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 1.6 }}>{agentError}</div>
-                          <button onClick={() => runCycle()} style={{ marginTop: 12, padding: "7px 16px", background: `${theme.warning}15`, border: `1px solid ${theme.warning}40`, borderRadius: 8, color: theme.warning, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                            Retry
-                          </button>
-                        </div>
+                  {/* Warning state — shows above results, not instead of them */}
+                  {agentError && !running && (
+                    <div style={{ background: `${theme.warning}08`, border: `1px solid ${theme.warning}25`, borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 1.5 }}>{agentError}</div>
                       </div>
+                      <button onClick={() => runCycle()} style={{ flexShrink: 0, padding: "5px 12px", background: `${theme.warning}15`, border: `1px solid ${theme.warning}40`, borderRadius: 7, color: theme.warning, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        Retry
+                      </button>
                     </div>
                   )}
 
