@@ -5,8 +5,11 @@
 import { ethers } from "ethers";
 import { CHAIN_ID, RPC_URL } from "./wagmi";
 import { PAYMENT_TIERS, type TierLevel, type TxRecord } from "./types";
-// User requested EOA address to prevent contract revert errors
-const TREASURY_WALLET = "0x1BFAe4EE12c8f2bF17B8EEb8Ea0BcB32AdbB240B";
+// Treasury wallet — reads from env so it's configurable without code changes.
+// Falls back to the deployed contract address on HashKey Chain mainnet.
+const TREASURY_WALLET =
+  process.env.NEXT_PUBLIC_TREASURY_ADDRESS ||
+  "0xD3a7348589267176DcAcBf5dF8c2cA0d892D4f7D";
 
 const SIGNAL_SETTLEMENT_ABI = [
   "function payForSignal(string tokenSymbol) payable returns (uint256)",
@@ -33,6 +36,15 @@ async function getSignerAsync(): Promise<ethers.JsonRpcSigner> {
   return bp.getSigner();
 }
 
+function validateTreasury() {
+  if (!ethers.isAddress(TREASURY_WALLET)) {
+    throw new Error(
+      `Invalid treasury address: "${TREASURY_WALLET}". Check NEXT_PUBLIC_TREASURY_ADDRESS in your environment variables.`
+    );
+  }
+  return ethers.getAddress(TREASURY_WALLET); // returns checksummed address
+}
+
 // ─── TIER PAYMENT ─────────────────────────────────────────────────────────────
 
 /**
@@ -50,14 +62,15 @@ export async function payForTierUnlock(tier: TierLevel): Promise<TxRecord> {
   console.log(`[Web3PaymentService] Payer: ${fromAddress}`);
 
   // Step 2: Build the transaction (native HSK transfer to treasury)
+  const treasury = validateTreasury();
   const valueWei = ethers.parseEther(tierConfig.costHsk.toString());
   console.log(`[Web3PaymentService] Value: ${valueWei.toString()} wei`);
-  console.log(`[Web3PaymentService] Treasury: ${TREASURY_WALLET}`);
+  console.log(`[Web3PaymentService] Treasury: ${treasury}`);
 
   // Step 3: Send the transaction
   console.log(`[Web3PaymentService] Sending transaction...`);
   const tx = await signer.sendTransaction({
-    to: TREASURY_WALLET,
+    to: treasury,
     value: valueWei,
   });
   console.log(`[Web3PaymentService] Transaction sent: ${tx.hash}`);
@@ -91,12 +104,12 @@ export async function payForSignal(
   console.log(`[Web3PaymentService] Paying for signal: ${tokenSymbol}`);
 
   const signer = await getSignerAsync();
-  // Bypass smart contract, send directly to treasury per user request
+  const treasury = validateTreasury();
   const feeWei = ethers.parseEther("0.1"); // Fixed 0.1 HSK fee
   
   // Send the transaction
   const tx = await signer.sendTransaction({
-    to: TREASURY_WALLET,
+    to: treasury,
     value: feeWei,
   });
   console.log(`[Web3PaymentService] Signal payment tx sent: ${tx.hash}`);
@@ -160,10 +173,11 @@ export async function payForDeepAnalytics(tokenSymbol: string): Promise<TxRecord
   console.log(`[Web3PaymentService] Paying for deep analytics: ${tokenSymbol} (${cost} HSK)`);
 
   const signer = await getSignerAsync();
+  const treasury = validateTreasury();
   const valueWei = ethers.parseEther(cost.toString());
 
   const tx = await signer.sendTransaction({
-    to: TREASURY_WALLET,
+    to: treasury,
     value: valueWei,
   });
   console.log(`[Web3PaymentService] Deep analytics tx sent: ${tx.hash}`);
