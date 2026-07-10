@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Signal } from "@/lib/types";
 import { theme, actionColor } from "@/lib/theme";
+import type { SwapTarget } from "./SwapWidget";
 
 function money(n: number): string {
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
@@ -10,16 +11,15 @@ function money(n: number): string {
   return "$" + Math.round(n).toLocaleString();
 }
 
-function LaunchpadBadge({ isClanker, isZyno }: { isClanker?: boolean; isZyno?: boolean }) {
+function LaunchpadBadge({ chain, isClanker, isZyno }: { chain: string; isClanker?: boolean; isZyno?: boolean }) {
+  if (chain === "hashkey") return (
+    <span className="neon-badge neon-badge-pink" style={{ padding: "2px 7px", fontSize: 9, marginLeft: 4 }}>🔑 HSKSwap</span>
+  );
   if (isClanker) return (
-    <span className="neon-badge neon-badge-purple" style={{ padding: "2px 7px", fontSize: 9, marginLeft: 4 }}>
-      CLANKER
-    </span>
+    <span className="neon-badge neon-badge-purple" style={{ padding: "2px 7px", fontSize: 9, marginLeft: 4 }}>CLANKER</span>
   );
   if (isZyno) return (
-    <span className="neon-badge neon-badge-blue" style={{ padding: "2px 7px", fontSize: 9, marginLeft: 4 }}>
-      ZYNO
-    </span>
+    <span className="neon-badge neon-badge-blue" style={{ padding: "2px 7px", fontSize: 9, marginLeft: 4 }}>ZYNO</span>
   );
   return null;
 }
@@ -27,7 +27,9 @@ function LaunchpadBadge({ isClanker, isZyno }: { isClanker?: boolean; isZyno?: b
 function ActionBadge({ action }: { action: string }) {
   const c = actionColor(action);
   return (
-    <span style={{ color: c, border: `1px solid ${c}40`, background: `${c}10`, borderRadius: 999, padding: "4px 12px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" as const, boxShadow: `0 0 12px ${c}15` }}>
+    <span style={{ color: c, border: `1px solid ${c}40`, background: `${c}10`, borderRadius: 999,
+      padding: "4px 12px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+      textTransform: "uppercase" as const, boxShadow: `0 0 12px ${c}15` }}>
       {action}
     </span>
   );
@@ -41,7 +43,9 @@ function ScoreRing({ score, color, size = 38 }: { score: number; color: string; 
     <div className="score-ring" style={{ width: size, height: size }}>
       <svg width={size} height={size}>
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={theme.border} strokeWidth="3" />
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 0.8s ease", filter: `drop-shadow(0 0 4px ${color}60)` }} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth="3"
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 0.8s ease", filter: `drop-shadow(0 0 4px ${color}60)` }} />
       </svg>
       <span style={{ position: "absolute", fontSize: 10, fontWeight: 800, color, fontFamily: "var(--font-geist-mono), monospace" }}>{score}</span>
     </div>
@@ -59,7 +63,15 @@ function AgeLabel({ ageHours }: { ageHours: number }) {
   );
 }
 
-function SignalCard({ s, index }: { s: Signal; index: number }) {
+// ─── SIGNAL CARD ──────────────────────────────────────────────────────────────
+
+interface SignalCardProps {
+  s: Signal;
+  index: number;
+  onSwap: (target: SwapTarget) => void;
+}
+
+function SignalCard({ s, index, onSwap }: SignalCardProps) {
   const c = actionColor(s.action);
   const [copied, setCopied] = useState(false);
 
@@ -70,24 +82,45 @@ function SignalCard({ s, index }: { s: Signal; index: number }) {
     });
   }
 
+  function handleTrade() {
+    onSwap({
+      symbol: s.symbol,
+      name: s.name,
+      contractAddress: s.contractAddress,
+      chain: s.chain,
+      priceUsd: s.priceUsd,
+      logoUrl: s.logoUrl,
+      score: s.score,
+      action: s.action,
+      risePct: s.risePct,
+    });
+  }
+
   return (
     <div
       className="holo-card animate-fadeIn"
-      style={{ background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 16, padding: 16, transition: "all 0.25s ease", animationDelay: `${index * 0.04}s`, animationFillMode: "backwards", position: "relative", overflow: "hidden" }}
+      style={{ background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 16,
+        padding: 16, transition: "all 0.25s ease", animationDelay: `${index * 0.04}s`,
+        animationFillMode: "backwards", position: "relative", overflow: "hidden" }}
     >
       <div className="scan-line-overlay" />
       <div style={{ position: "relative", zIndex: 1 }}>
 
-        {/* Header row */}
+        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
               {s.logoUrl && (
-                <img src={s.logoUrl} alt={s.symbol} width={20} height={20} style={{ borderRadius: "50%", flexShrink: 0 }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                <img src={s.logoUrl} alt={s.symbol} width={20} height={20}
+                  style={{ borderRadius: "50%", flexShrink: 0 }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               )}
               <span style={{ fontWeight: 800, color: theme.text, fontSize: 16, letterSpacing: "-0.3px" }}>{s.symbol}</span>
-              <LaunchpadBadge isClanker={s.isClanker} isZyno={s.isZyno} />
-              <span style={{ fontSize: 10, color: theme.muted, textTransform: "uppercase", padding: "1px 6px", background: theme.panel, borderRadius: 4, border: `1px solid ${theme.border}` }}>{s.chain}</span>
+              <LaunchpadBadge chain={s.chain} isClanker={s.isClanker} isZyno={s.isZyno} />
+              <span style={{ fontSize: 10, color: theme.muted, textTransform: "uppercase",
+                padding: "1px 6px", background: theme.panel, borderRadius: 4, border: `1px solid ${theme.border}` }}>
+                {s.chain === "hashkey" ? "🔑 HashKey" : s.chain === "base" ? "⚡ Base" : `Ξ ${s.chain}`}
+              </span>
             </div>
             <div style={{ fontSize: 11, color: theme.muted, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {s.name}
@@ -108,7 +141,9 @@ function SignalCard({ s, index }: { s: Signal; index: number }) {
             </span>
           </div>
           <div style={{ height: 4, background: theme.border, borderRadius: 999, overflow: "hidden" }}>
-            <div style={{ width: `${s.score}%`, height: "100%", background: `linear-gradient(90deg, ${c}, ${c}AA)`, borderRadius: 999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${c}50` }} />
+            <div style={{ width: `${s.score}%`, height: "100%",
+              background: `linear-gradient(90deg, ${c}, ${c}AA)`, borderRadius: 999,
+              transition: "width 0.8s ease", boxShadow: `0 0 12px ${c}50` }} />
           </div>
         </div>
 
@@ -125,39 +160,52 @@ function SignalCard({ s, index }: { s: Signal; index: number }) {
           <AgeLabel ageHours={s.ageHours} />
         </div>
 
-        {/* AI reasoning snippet */}
-        <div style={{ marginTop: 10, padding: "8px 10px", background: `${c}08`, borderRadius: 8, border: `1px solid ${c}20`, fontSize: 11, color: theme.textSecondary, lineHeight: 1.5 }}>
+        {/* AI reasoning */}
+        <div style={{ marginTop: 10, padding: "8px 10px", background: `${c}08`, borderRadius: 8,
+          border: `1px solid ${c}20`, fontSize: 11, color: theme.textSecondary, lineHeight: 1.5 }}>
           {s.reasoning}
         </div>
 
-        {/* Bottom row: CA + action buttons */}
-        <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${theme.border}40`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        {/* Bottom row: CA + buttons */}
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${theme.border}40`,
+          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-            <span style={{ color: theme.muted, fontSize: 10, fontFamily: "var(--font-geist-mono), monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
+            <span style={{ color: theme.muted, fontSize: 10, fontFamily: "var(--font-geist-mono), monospace",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
               {s.contractAddress.slice(0, 6)}…{s.contractAddress.slice(-4)}
             </span>
-            <button onClick={copy} style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.border}`, color: copied ? theme.accent : theme.muted, cursor: "pointer", padding: "2px 7px", borderRadius: 4, fontSize: 9, fontWeight: 700 }}>
+            <button onClick={copy}
+              style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.border}`,
+                color: copied ? theme.accent : theme.muted, cursor: "pointer",
+                padding: "2px 7px", borderRadius: 4, fontSize: 9, fontWeight: 700 }}>
               {copied ? "✓" : "COPY"}
             </button>
           </div>
 
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            {/* DexScreener chart */}
             <a
               href={s.dexscreenerUrl || `https://dexscreener.com/${s.chain}/${s.contractAddress}`}
               target="_blank" rel="noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6, background: theme.panel, border: `1px solid ${theme.border}`, color: theme.textSecondary, textDecoration: "none", fontSize: 11, fontWeight: 600 }}
-            >
+              style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6,
+                background: theme.panel, border: `1px solid ${theme.border}`,
+                color: theme.textSecondary, textDecoration: "none", fontSize: 11, fontWeight: 600 }}>
               📈 Chart
             </a>
-            {/* Trade button */}
-            <a
-              href={s.tradeUrl || (s.chain === "hashkey" ? `https://hskswap.com/#/swap?chain=hashkey&outputCurrency=${s.contractAddress}` : `https://app.uniswap.org/swap?chain=${s.chain === "base" ? "base" : "mainnet"}&outputCurrency=${s.contractAddress}`)}
-              target="_blank" rel="noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 12px", borderRadius: 6, background: s.action === "ENTER" ? `linear-gradient(135deg, ${c}, ${c}CC)` : theme.panel, border: `1px solid ${s.action === "ENTER" ? c + "40" : theme.border}`, color: s.action === "ENTER" ? "#06070D" : theme.textSecondary, textDecoration: "none", fontSize: 11, fontWeight: 700 }}
+            {/* ─── SWAP BUTTON — opens in-app SwapWidget ─── */}
+            <button
+              onClick={handleTrade}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
+                background: s.action === "ENTER"
+                  ? `linear-gradient(135deg, ${c}, ${c}CC)`
+                  : `linear-gradient(135deg, ${theme.tierBasic}90, ${theme.tierPremium}90)`,
+                color: s.action === "ENTER" ? "#06070D" : theme.text,
+                boxShadow: s.action === "ENTER" ? `0 2px 12px ${c}30` : "none",
+                transition: "all 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = ""; }}
             >
-              ↗ Trade
-            </a>
+              ↗ {s.chain === "hashkey" ? "HSKSwap" : "Swap"}
+            </button>
           </div>
         </div>
       </div>
@@ -165,27 +213,24 @@ function SignalCard({ s, index }: { s: Signal; index: number }) {
   );
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+// ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
 
 interface SignalFeedProps {
   signals: Signal[];
   loading: boolean;
   onRefresh?: () => void;
   lastUpdated?: Date | null;
+  onSwap: (target: SwapTarget) => void;
 }
 
-export default function SignalFeed({ signals, loading, onRefresh, lastUpdated }: SignalFeedProps) {
+export default function SignalFeed({ signals, loading, onRefresh, lastUpdated, onSwap }: SignalFeedProps) {
   const [filter, setFilter] = useState<"all" | "base" | "ethereum" | "hashkey">("all");
   const [actionFilter, setActionFilter] = useState<"all" | "ENTER" | "WATCH">("all");
   const [countdown, setCountdown] = useState(60);
 
-  // Countdown to next refresh
   useEffect(() => {
     const tick = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) { return 60; }
-        return c - 1;
-      });
+      setCountdown((c) => (c <= 1 ? 60 : c - 1));
     }, 1000);
     return () => clearInterval(tick);
   }, [lastUpdated]);
@@ -198,6 +243,7 @@ export default function SignalFeed({ signals, loading, onRefresh, lastUpdated }:
 
   const enterCount = signals.filter((s) => s.action === "ENTER").length;
   const watchCount = signals.filter((s) => s.action === "WATCH").length;
+  const hskCount = signals.filter((s) => s.chain === "hashkey").length;
 
   return (
     <div>
@@ -215,7 +261,8 @@ export default function SignalFeed({ signals, loading, onRefresh, lastUpdated }:
             🔄 {countdown}s
           </span>
           {onRefresh && (
-            <button onClick={onRefresh} disabled={loading} style={{ background: "transparent", border: `1px solid ${theme.border}`, color: theme.muted, borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+            <button onClick={onRefresh} disabled={loading}
+              style={{ background: "transparent", border: `1px solid ${theme.border}`, color: theme.muted, borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
               Refresh
             </button>
           )}
@@ -223,27 +270,35 @@ export default function SignalFeed({ signals, loading, onRefresh, lastUpdated }:
       </div>
 
       {/* Source badges */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
         <span className="neon-badge neon-badge-green" style={{ fontSize: 10 }}>DexScreener</span>
         <span className="neon-badge neon-badge-purple" style={{ fontSize: 10 }}>Clanker</span>
         <span className="neon-badge neon-badge-blue" style={{ fontSize: 10 }}>GeckoTerminal</span>
         <span className="neon-badge neon-badge-orange" style={{ fontSize: 10 }}>Zyno</span>
-        <span className="neon-badge neon-badge-pink" style={{ fontSize: 10 }}>HSKSwap</span>
-        <span style={{ fontSize: 11, color: theme.muted, marginLeft: 4 }}>· {enterCount} ENTER · {watchCount} WATCH</span>
+        <span className="neon-badge neon-badge-pink" style={{ fontSize: 10 }}>🔑 HSKSwap</span>
+        <span style={{ fontSize: 11, color: theme.muted, marginLeft: 4 }}>
+          · {enterCount} ENTER · {watchCount} WATCH{hskCount > 0 ? ` · ${hskCount} HashKey` : ""}
+        </span>
       </div>
 
       {/* Filters */}
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
         {(["all", "base", "ethereum", "hashkey"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: `1px solid ${filter === f ? theme.accent + "60" : theme.border}`, background: filter === f ? `${theme.accent}15` : "transparent", color: filter === f ? theme.accent : theme.muted, cursor: "pointer" }}>
+            style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer",
+              border: `1px solid ${filter === f ? theme.accent + "60" : theme.border}`,
+              background: filter === f ? `${theme.accent}15` : "transparent",
+              color: filter === f ? theme.accent : theme.muted }}>
             {f === "all" ? "All Chains" : f === "base" ? "⚡ Base" : f === "ethereum" ? "Ξ Ethereum" : "🔑 HashKey"}
           </button>
         ))}
         <div style={{ width: 1, background: theme.border, margin: "0 4px" }} />
         {(["all", "ENTER", "WATCH"] as const).map((a) => (
           <button key={a} onClick={() => setActionFilter(a)}
-            style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: `1px solid ${actionFilter === a ? theme.accent + "60" : theme.border}`, background: actionFilter === a ? `${theme.accent}15` : "transparent", color: actionFilter === a ? theme.accent : theme.muted, cursor: "pointer" }}>
+            style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer",
+              border: `1px solid ${actionFilter === a ? theme.accent + "60" : theme.border}`,
+              background: actionFilter === a ? `${theme.accent}15` : "transparent",
+              color: actionFilter === a ? theme.accent : theme.muted }}>
             {a === "all" ? "All Signals" : a}
           </button>
         ))}
@@ -253,18 +308,20 @@ export default function SignalFeed({ signals, loading, onRefresh, lastUpdated }:
       {loading && filtered.length === 0 ? (
         <div style={{ display: "grid", gap: 10 }}>
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="animate-shimmer" style={{ height: 160, background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 16 }} />
+            <div key={i} className="animate-shimmer"
+              style={{ height: 160, background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 16 }} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ color: theme.muted, fontSize: 13, padding: 32, textAlign: "center", background: theme.panelAlt, borderRadius: 16, border: `1px solid ${theme.border}` }}>
+        <div style={{ color: theme.muted, fontSize: 13, padding: 32, textAlign: "center",
+          background: theme.panelAlt, borderRadius: 16, border: `1px solid ${theme.border}` }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>📡</div>
           No signals match the current filters. Try changing chain or signal type.
         </div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map((s, i) => (
-            <SignalCard key={`${s.contractAddress}-${i}`} s={s} index={i} />
+            <SignalCard key={`${s.contractAddress}-${i}`} s={s} index={i} onSwap={onSwap} />
           ))}
         </div>
       )}

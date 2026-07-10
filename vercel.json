@@ -5,7 +5,19 @@
   "installCommand": "npm install",
   "regions": ["iad1"],
   "functions": {
-    "src/app/api/**/*.ts": {
+    "src/app/api/run-agent/route.ts": {
+      "maxDuration": 55
+    },
+    "src/app/api/chat/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/token/[address]/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/signals/route.ts": {
+      "maxDuration": 20
+    },
+    "src/app/api/stats/route.ts": {
       "maxDuration": 15
     }
   }

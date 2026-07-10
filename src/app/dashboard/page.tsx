@@ -12,6 +12,7 @@ import TokenChecker from "@/components/TokenChecker";
 import WalletConnect from "@/components/WalletConnect";
 import PaymentTierGate from "@/components/PaymentTierGate";
 import AICopilot from "@/components/AICopilot";
+import SwapWidget, { type SwapTarget } from "@/components/SwapWidget";
 import { isWalletAvailable, getUserAddress } from "@/lib/contracts-client";
 import { chainMeta } from "@/lib/contract";
 import type { Signal, AgentResult } from "@/lib/types";
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [lastAgentRun, setLastAgentRun] = useState<Date | null>(null);
   const [agentCountdown, setAgentCountdown] = useState(300);
   const [stats, setStats] = useState({ signalsPaid: 0, decisions: 0, hskSpent: 0 });
+  const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const agentTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasInitialized = useRef(false);
@@ -279,6 +281,7 @@ export default function Dashboard() {
                 loading={signalsLoading}
                 onRefresh={loadSignals}
                 lastUpdated={lastUpdated}
+                onSwap={setSwapTarget}
               />
             )}
             {activeTab === "ai-signals" && (
@@ -342,7 +345,7 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  <AgentReasoning results={localResults} steps={steps} running={running} />
+                  <AgentReasoning results={localResults} steps={steps} running={running} onSwap={setSwapTarget} />
                 </div>
               </PaymentTierGate>
             )}
@@ -356,6 +359,14 @@ export default function Dashboard() {
           </aside>
         </div>
       </main>
+
+      {/* ─── SWAP WIDGET OVERLAY ─── */}
+      {swapTarget && (
+        <SwapWidget
+          target={swapTarget}
+          onClose={() => setSwapTarget(null)}
+        />
+      )}
     </div>
   );
 }
