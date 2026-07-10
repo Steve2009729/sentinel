@@ -88,7 +88,28 @@ function scoreToken(p: any): TokenSignal {
 export async function fetchSignals(chain = "base"): Promise<TokenSignal[]> {
   if (chain === "hashkey") {
     try {
-      return await fetchHskSwapSignals();
+      const hskSignals = await fetchHskSwapSignals();
+      // Map HskSwapSignal → TokenSignal by providing the missing pairCreatedAt field
+      return hskSignals.map((s): TokenSignal => ({
+        symbol: s.symbol,
+        name: s.name,
+        chain: s.chain,
+        priceUsd: s.priceUsd,
+        liquidityUsd: s.liquidityUsd,
+        volume24h: s.volume24h,
+        priceChange1h: s.priceChange1h,
+        pairCreatedAt: Date.now() - s.ageHours * 3_600_000,
+        ageHours: s.ageHours,
+        score: s.score,
+        action: s.action,
+        reasoning: s.reasoning,
+        source: "hskswap",
+        contractAddress: s.contractAddress,
+        pairAddress: s.pairAddress,
+        tradeUrl: s.tradeUrl,
+        dexscreenerUrl: s.dexscreenerUrl,
+        explorerUrl: s.explorerUrl,
+      }));
     } catch (e) {
       console.error("fetchSignals (hashkey) error:", e);
       return [];
