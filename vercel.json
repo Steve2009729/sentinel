@@ -1,24 +1,11 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install",
   "regions": ["iad1"],
   "functions": {
-    "app/api/run-agent/route": {
-      "maxDuration": 55
-    },
-    "app/api/chat/route": {
-      "maxDuration": 30
-    },
-    "app/api/token/[address]/route": {
-      "maxDuration": 30
-    },
-    "app/api/signals/route": {
-      "maxDuration": 20
-    },
-    "app/api/stats/route": {
-      "maxDuration": 15
-    }
+    "api/run-agent": { "maxDuration": 55 },
+    "api/chat": { "maxDuration": 30 },
+    "api/token/[address]": { "maxDuration": 30 },
+    "api/signals": { "maxDuration": 20 },
+    "api/stats": { "maxDuration": 15 }
   }
 }
