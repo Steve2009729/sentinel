@@ -238,10 +238,15 @@ export default function Dashboard() {
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", margin: "10px 14px 0", borderRadius: 14, position: "sticky", top: 10, zIndex: 40 }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div>
+          {/* Sentinel logo — click to go back to landing page */}
+          <a
+            href="/"
+            style={{ textDecoration: "none", cursor: "pointer" }}
+            title="Back to home"
+          >
             <div className="gradient-text-large" style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.5px" }}>Sentinel</div>
             <div style={{ fontSize: 10, color: theme.muted }}>AI Signal Terminal · HashKey Chain</div>
-          </div>
+          </a>
           <div className="neon-badge neon-badge-green animate-border-glow" style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <div className="live-dot" style={{ width: 5, height: 5 }} />
             {chainMeta().name}

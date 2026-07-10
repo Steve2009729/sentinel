@@ -51,7 +51,7 @@ export default function LiveToasts() {
         exiting: false,
       };
 
-      setToasts((prev) => [...prev.slice(-3), newToast]); // Keep max 4 toasts
+      setToasts((prev) => [...prev.slice(-1), newToast]); // Keep max 2 toasts
       setCounter((c) => c + 1);
 
       // Auto-remove after 4s
@@ -72,13 +72,13 @@ export default function LiveToasts() {
     <div
       style={{
         position: "fixed",
-        top: 24,
+        bottom: 24,
         right: 24,
         zIndex: 50,
         display: "flex",
         flexDirection: "column",
-        gap: 10,
-        maxWidth: 380,
+        gap: 8,
+        maxWidth: 340,
         pointerEvents: "none",
       }}
     >

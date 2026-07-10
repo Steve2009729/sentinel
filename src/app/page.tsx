@@ -125,7 +125,7 @@ export default function Home() {
           <h2 style={{ fontSize: "clamp(26px,4vw,36px)", fontWeight: 900, letterSpacing: "-1px", margin: "0 0 14px" }}>Why Choose <span className="gradient-text-large">Sentinel</span>?</h2>
           <p style={{ color: theme.textSecondary, fontSize: 15, maxWidth: 640, margin: "0 auto", lineHeight: 1.7 }}>The most advanced AI-powered token signal platform. Real-time data from multiple launchpads, Gemini AI analysis, and transparent on-chain settlements.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="features-grid">
           {[
             {i:"🚀",t:"Real-Time Token Discovery",d:"Instant alerts for new launches on Base and Ethereum from Clanker, Zyno, GeckoTerminal, and DexScreener — auto-refreshed every 60 seconds.",g:"linear-gradient(135deg,#00E5A0,#00C896)"},
             {i:"🤖",t:"Google Gemini AI Engine",d:"Advanced AI analysis with projected rise %, timeframe estimates, entry reasoning, and on-chain decision logging — all powered by Gemini 2.5 Flash.",g:"linear-gradient(135deg,#5B8DEF,#4A7FDB)"},
