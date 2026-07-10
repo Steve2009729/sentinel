@@ -7,6 +7,7 @@
 
 import type { Signal } from "./types";
 import { calculateRisePotential, type RisePotentialInput } from "./risePotential";
+import { fetchHskSwapSignals } from "../../agent/hskswapSource";
 
 const DEXSCREENER_API = "https://api.dexscreener.com";
 
@@ -250,12 +251,13 @@ async function fetchDexScreenerBoosted(): Promise<Set<string>> {
 export async function fetchMultiChainSignals(limit = 30): Promise<Signal[]> {
   try {
     // Fetch all sources in parallel
-    const [clankerAddrs, zynoAddrs, dexBoosted, baseRes, ethRes] = await Promise.allSettled([
+    const [clankerAddrs, zynoAddrs, dexBoosted, baseRes, ethRes, hskSignalsRes] = await Promise.allSettled([
       fetchClankerAddresses(),
       fetchZynoAddresses(),
       fetchDexScreenerBoosted(),
       fetchWithTimeout("https://api.geckoterminal.com/api/v2/networks/base/new_pools?include=base_token,quote_token&sort=pool_created_at&page=1", 8000),
       fetchWithTimeout("https://api.geckoterminal.com/api/v2/networks/eth/new_pools?include=base_token,quote_token&sort=pool_created_at&page=1", 8000),
+      fetchHskSwapSignals(),
     ]);
 
     const clankerSet: Set<string> = clankerAddrs.status === "fulfilled" ? clankerAddrs.value : new Set();
@@ -291,18 +293,49 @@ export async function fetchMultiChainSignals(limit = 30): Promise<Signal[]> {
     await processGeckoRes(baseRes, "base");
     await processGeckoRes(ethRes, "ethereum");
 
-    if (pools.length === 0) {
-      console.warn("[Sentinel] GeckoTerminal returned no pools");
-      return [];
-    }
-
     const signals: Signal[] = [];
+
+    // Process GeckoTerminal pools
     for (const pool of pools) {
       try {
         const chain: "base" | "ethereum" = (pool as any)._chain ?? "base";
         const sig = parseGeckoPool(pool, tokensMap, clankerSet, chain);
         if (sig) signals.push(sig);
       } catch {}
+    }
+
+    // Merge HSKSwap signals if fetched successfully
+    if (hskSignalsRes.status === "fulfilled" && Array.isArray(hskSignalsRes.value)) {
+      hskSignalsRes.value.forEach((s: any) => {
+        signals.push({
+          symbol: s.symbol,
+          name: s.name,
+          chain: s.chain ?? "hashkey",
+          priceUsd: s.priceUsd ?? 0,
+          liquidityUsd: s.liquidityUsd ?? 0,
+          marketCap: 0,
+          volume24h: s.volume24h ?? 0,
+          priceChange1h: s.priceChange1h ?? 0,
+          priceChange24h: 0,
+          ageHours: s.ageHours ?? 24,
+          score: s.score ?? 0,
+          action: s.action ?? "SKIP",
+          reasoning: s.reasoning ?? "",
+          risePct: s.score >= 70 ? Math.round(40 + (s.priceChange1h ?? 0) * 1.5) : Math.round(15 + (s.priceChange1h ?? 0)),
+          pairAddress: s.pairAddress || "",
+          contractAddress: s.contractAddress || "",
+          isClanker: false,
+          isZyno: false,
+          tradeUrl: s.tradeUrl,
+          explorerUrl: s.explorerUrl,
+          dexscreenerUrl: s.dexscreenerUrl,
+        });
+      });
+    }
+
+    if (signals.length === 0) {
+      console.warn("[Sentinel] All data sources returned no pools");
+      return [];
     }
 
     // Sort: newest first, then by score
@@ -313,7 +346,7 @@ export async function fetchMultiChainSignals(limit = 30): Promise<Signal[]> {
     });
 
     const result = signals.slice(0, limit);
-    console.log(`[Sentinel] Loaded ${result.length} live signals from ${pools.length} pools`);
+    console.log(`[Sentinel] Loaded ${result.length} live signals from all sources`);
     return result;
   } catch (e) {
     console.error("[Sentinel] fetchMultiChainSignals failed:", e);

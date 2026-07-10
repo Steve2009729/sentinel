@@ -259,8 +259,12 @@ IMPORTANT: Do not use markdown. Return only the raw JSON array.`;
         logoUrl: s.logoUrl ?? undefined,
         tradeUrl: s.chain === "base"
           ? `https://app.uniswap.org/swap?chain=base&outputCurrency=${s.contractAddress}`
-          : `https://app.uniswap.org/swap?chain=mainnet&outputCurrency=${s.contractAddress}`,
-        dexscreenerUrl: `https://dexscreener.com/${s.chain}/${s.contractAddress}`,
+          : s.chain === "hashkey"
+            ? `https://hskswap.com/#/swap?chain=hashkey&outputCurrency=${s.contractAddress}`
+            : `https://app.uniswap.org/swap?chain=mainnet&outputCurrency=${s.contractAddress}`,
+        dexscreenerUrl: s.chain === "hashkey"
+          ? `https://dexscreener.com/hashkey/${s.pairAddress}`
+          : `https://dexscreener.com/${s.chain}/${s.contractAddress}`,
         reasoning: thought,
         thought,
         payHash: `0xpay${Date.now().toString(16)}${Math.random().toString(16).slice(2, 12)}`,

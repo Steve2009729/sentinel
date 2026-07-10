@@ -4,6 +4,7 @@
 // and CoinGecko trending — then cross-references to find the strongest signals.
 
 import type { Signal } from "./types";
+import { fetchHskSwapSignals } from "../../agent/hskswapSource";
 
 const T = 7000; // request timeout ms
 
@@ -200,11 +201,12 @@ export interface ResearchedSignal {
 }
 
 export async function fetchResearchedSignals(limit = 8): Promise<ResearchedSignal[]> {
-  const [trending, newPools, dexBoosted, cgTrending] = await Promise.allSettled([
+  const [trending, newPools, dexBoosted, cgTrending, hskSignalsRes] = await Promise.allSettled([
     fetchGeckoTopGainers(),
     fetchGeckoNewPools(),
     fetchDexScreenerTrending(),
     fetchCoinGeckoTrending(),
+    fetchHskSwapSignals(),
   ]);
 
   const cgSymbols = new Set<string>(cgTrending.status === "fulfilled" ? cgTrending.value : []);
@@ -248,12 +250,40 @@ export async function fetchResearchedSignals(limit = 8): Promise<ResearchedSigna
     } as ResearchedSignal;
   });
 
+  const hskSignals: ResearchedSignal[] = [];
+  if (hskSignalsRes.status === "fulfilled" && Array.isArray(hskSignalsRes.value)) {
+    hskSignalsRes.value.forEach((s: any) => {
+      hskSignals.push({
+        symbol: s.symbol,
+        name: s.name,
+        chain: s.chain ?? "hashkey",
+        contractAddress: s.contractAddress || "",
+        pairAddress: s.pairAddress || "",
+        priceUsd: s.priceUsd ?? 0,
+        liquidityUsd: s.liquidityUsd ?? 0,
+        volume24h: s.volume24h ?? 0,
+        priceChange1h: s.priceChange1h ?? 0,
+        priceChange24h: 0,
+        marketCap: 0,
+        score: s.score ?? 0,
+        action: s.action ?? "SKIP",
+        sources: ["hskswap"],
+        isTrendingOnCoinGecko: false,
+        isBoostedOnDexScreener: false,
+        logoUrl: undefined,
+      });
+    });
+  }
+
+  // Combine scored Gecko tokens with HskSwap signals
+  const combinedScored = [...scored, ...hskSignals];
+
   // Sort: ENTER first, then by score
-  scored.sort((a, b) => {
+  combinedScored.sort((a, b) => {
     if (a.action === "ENTER" && b.action !== "ENTER") return -1;
     if (b.action === "ENTER" && a.action !== "ENTER") return 1;
     return b.score - a.score;
   });
 
-  return scored.slice(0, limit);
+  return combinedScored.slice(0, limit);
 }

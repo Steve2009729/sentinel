@@ -152,7 +152,7 @@ function SignalCard({ s, index }: { s: Signal; index: number }) {
             </a>
             {/* Trade button */}
             <a
-              href={s.tradeUrl || `https://app.uniswap.org/swap?chain=${s.chain === "base" ? "base" : "mainnet"}&outputCurrency=${s.contractAddress}`}
+              href={s.tradeUrl || (s.chain === "hashkey" ? `https://hskswap.com/#/swap?chain=hashkey&outputCurrency=${s.contractAddress}` : `https://app.uniswap.org/swap?chain=${s.chain === "base" ? "base" : "mainnet"}&outputCurrency=${s.contractAddress}`)}
               target="_blank" rel="noreferrer"
               style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 12px", borderRadius: 6, background: s.action === "ENTER" ? `linear-gradient(135deg, ${c}, ${c}CC)` : theme.panel, border: `1px solid ${s.action === "ENTER" ? c + "40" : theme.border}`, color: s.action === "ENTER" ? "#06070D" : theme.textSecondary, textDecoration: "none", fontSize: 11, fontWeight: 700 }}
             >
@@ -175,7 +175,7 @@ interface SignalFeedProps {
 }
 
 export default function SignalFeed({ signals, loading, onRefresh, lastUpdated }: SignalFeedProps) {
-  const [filter, setFilter] = useState<"all" | "base" | "ethereum">("all");
+  const [filter, setFilter] = useState<"all" | "base" | "ethereum" | "hashkey">("all");
   const [actionFilter, setActionFilter] = useState<"all" | "ENTER" | "WATCH">("all");
   const [countdown, setCountdown] = useState(60);
 
@@ -228,15 +228,16 @@ export default function SignalFeed({ signals, loading, onRefresh, lastUpdated }:
         <span className="neon-badge neon-badge-purple" style={{ fontSize: 10 }}>Clanker</span>
         <span className="neon-badge neon-badge-blue" style={{ fontSize: 10 }}>GeckoTerminal</span>
         <span className="neon-badge neon-badge-orange" style={{ fontSize: 10 }}>Zyno</span>
+        <span className="neon-badge neon-badge-pink" style={{ fontSize: 10 }}>HSKSwap</span>
         <span style={{ fontSize: 11, color: theme.muted, marginLeft: 4 }}>· {enterCount} ENTER · {watchCount} WATCH</span>
       </div>
 
       {/* Filters */}
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-        {(["all", "base", "ethereum"] as const).map((f) => (
+        {(["all", "base", "ethereum", "hashkey"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: `1px solid ${filter === f ? theme.accent + "60" : theme.border}`, background: filter === f ? `${theme.accent}15` : "transparent", color: filter === f ? theme.accent : theme.muted, cursor: "pointer", textTransform: "capitalize" }}>
-            {f === "all" ? "All Chains" : f === "base" ? "⚡ Base" : "Ξ Ethereum"}
+            style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: `1px solid ${filter === f ? theme.accent + "60" : theme.border}`, background: filter === f ? `${theme.accent}15` : "transparent", color: filter === f ? theme.accent : theme.muted, cursor: "pointer" }}>
+            {f === "all" ? "All Chains" : f === "base" ? "⚡ Base" : f === "ethereum" ? "Ξ Ethereum" : "🔑 HashKey"}
           </button>
         ))}
         <div style={{ width: 1, background: theme.border, margin: "0 4px" }} />

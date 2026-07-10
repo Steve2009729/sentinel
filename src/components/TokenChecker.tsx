@@ -80,6 +80,7 @@ export default function TokenChecker() {
         >
           <option value="base">⚡ Base</option>
           <option value="ethereum">Ξ Ethereum</option>
+          <option value="hashkey">🔑 HashKey</option>
         </select>
         <input
           type="text"
@@ -143,15 +144,15 @@ export default function TokenChecker() {
 
             {/* Quick links */}
             <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <a href={`https://dexscreener.com/${analytics.chain}/${analytics.contractAddress}`} target="_blank" rel="noreferrer"
+              <a href={analytics.chain === "hashkey" ? `https://dexscreener.com/hashkey/${analytics.contractAddress}` : `https://dexscreener.com/${analytics.chain}/${analytics.contractAddress}`} target="_blank" rel="noreferrer"
                 style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, color: theme.textSecondary, background: theme.panelAlt, border: `1px solid ${theme.border}`, textDecoration: "none" }}>
                 📊 DexScreener
               </a>
-              <a href={`https://app.uniswap.org/swap?chain=${analytics.chain === "base" ? "base" : "mainnet"}&outputCurrency=${analytics.contractAddress}`} target="_blank" rel="noreferrer"
+              <a href={analytics.chain === "hashkey" ? `https://hskswap.com/#/swap?chain=hashkey&outputCurrency=${analytics.contractAddress}` : `https://app.uniswap.org/swap?chain=${analytics.chain === "base" ? "base" : "mainnet"}&outputCurrency=${analytics.contractAddress}`} target="_blank" rel="noreferrer"
                 style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, color: "#06070D", background: `linear-gradient(135deg, ${theme.accent}, #5B8DEF)`, border: "none", textDecoration: "none" }}>
-                ↗ Trade on Uniswap
+                ↗ Trade {analytics.chain === "hashkey" ? "on HSKSwap" : "on Uniswap"}
               </a>
-              <a href={analytics.chain === "base" ? `https://basescan.org/token/${analytics.contractAddress}` : `https://etherscan.io/token/${analytics.contractAddress}`} target="_blank" rel="noreferrer"
+              <a href={analytics.chain === "hashkey" ? `https://hashkey.blockscout.com/token/${analytics.contractAddress}` : analytics.chain === "base" ? `https://basescan.org/token/${analytics.contractAddress}` : `https://etherscan.io/token/${analytics.contractAddress}`} target="_blank" rel="noreferrer"
                 style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, color: theme.textSecondary, background: theme.panelAlt, border: `1px solid ${theme.border}`, textDecoration: "none" }}>
                 🔗 Explorer
               </a>

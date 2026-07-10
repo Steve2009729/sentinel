@@ -7,6 +7,44 @@ import { ethers } from "ethers";
 
 const DEXSCREENER_API = "https://api.dexscreener.com";
 
+async function fetchHskSwapPoolsForToken(address: string): Promise<any[]> {
+  const query = `
+    query GetTokenPools($address: String!) {
+      pools(
+        where: { or: [{ token0: $address }, { token1: $address }] }
+        orderBy: totalValueLockedUSD
+        orderDirection: desc
+      ) {
+        id
+        token0 { id symbol name }
+        token1 { id symbol name }
+        token0Price
+        token1Price
+        totalValueLockedUSD
+        volumeUSD
+        createdAtTimestamp
+        poolHourData(first: 2, orderBy: periodStartUnix, orderDirection: desc) {
+          close
+        }
+      }
+    }
+  `;
+
+  try {
+    const res = await fetch("https://graphnode.hashkeychain.net/subgraphs/name/hskswap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables: { address: address.toLowerCase() } }),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data?.pools ?? [];
+  } catch (e) {
+    console.error("[TokenAnalytics] HSKSwap subgraph query error:", e);
+    return [];
+  }
+}
+
 /**
  * Fetch comprehensive analytics for a specific token contract address.
  */
@@ -17,29 +55,83 @@ export async function fetchTokenAnalytics(
   try {
     console.log(`[TokenAnalytics] Fetching data for ${contractAddress} on ${chain}`);
 
-    // Fetch pair data from DexScreener
-    const res = await fetch(
-      `${DEXSCREENER_API}/token-pairs/v1/${chain}/${contractAddress}`,
-      { cache: "no-store" }
-    );
+    let pair: any = null;
 
-    if (!res.ok) {
-      console.error(`[TokenAnalytics] DexScreener error: ${res.status}`);
-      return null;
+    if (chain === "hashkey") {
+      const pools = await fetchHskSwapPoolsForToken(contractAddress);
+      if (pools.length === 0) {
+        console.warn(`[TokenAnalytics] No HSKSwap pools found for ${contractAddress}`);
+        return null;
+      }
+      
+      const pool = pools[0]; // highest TVL pool
+      const isToken0 = pool.token0.id.toLowerCase() === contractAddress.toLowerCase();
+      const baseToken = isToken0 ? pool.token0 : pool.token1;
+      const quoteToken = isToken0 ? pool.token1 : pool.token0;
+      
+      const priceUsd = isToken0 ? parseFloat(pool.token0Price) : parseFloat(pool.token1Price);
+      
+      let priceChange1h = 0;
+      const hourData = pool.poolHourData ?? [];
+      if (hourData.length >= 2) {
+        const latest = parseFloat(hourData[0].close);
+        const prev = parseFloat(hourData[1].close);
+        if (prev > 0) {
+          priceChange1h = ((latest - prev) / prev) * 100;
+        }
+      }
+      
+      pair = {
+        pairAddress: pool.id,
+        baseToken: {
+          address: baseToken.id,
+          name: baseToken.name,
+          symbol: baseToken.symbol,
+        },
+        quoteToken: {
+          address: quoteToken.id,
+          name: quoteToken.name,
+          symbol: quoteToken.symbol,
+        },
+        priceUsd: priceUsd.toString(),
+        liquidity: {
+          usd: parseFloat(pool.totalValueLockedUSD) || 0,
+        },
+        volume: {
+          h24: parseFloat(pool.volumeUSD) || 0,
+        },
+        marketCap: 0,
+        priceChange: {
+          h1: priceChange1h,
+          h24: 0,
+        },
+        pairCreatedAt: pool.createdAtTimestamp ? parseInt(pool.createdAtTimestamp) * 1000 : Date.now(),
+      };
+    } else {
+      // Fetch pair data from DexScreener
+      const res = await fetch(
+        `${DEXSCREENER_API}/token-pairs/v1/${chain}/${contractAddress}`,
+        { cache: "no-store" }
+      );
+
+      if (!res.ok) {
+        console.error(`[TokenAnalytics] DexScreener error: ${res.status}`);
+        return null;
+      }
+
+      const data = await res.json();
+      const pairs = Array.isArray(data) ? data : (data.pairs ?? []);
+
+      if (pairs.length === 0) {
+        console.warn(`[TokenAnalytics] No pairs found for ${contractAddress}`);
+        return null;
+      }
+
+      // Use the highest-liquidity pair
+      pair = pairs.sort((a: any, b: any) =>
+        (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0)
+      )[0];
     }
-
-    const data = await res.json();
-    const pairs = Array.isArray(data) ? data : (data.pairs ?? []);
-
-    if (pairs.length === 0) {
-      console.warn(`[TokenAnalytics] No pairs found for ${contractAddress}`);
-      return null;
-    }
-
-    // Use the highest-liquidity pair
-    const pair = pairs.sort((a: any, b: any) =>
-      (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0)
-    )[0];
 
     const liquidityUsd = pair.liquidity?.usd ?? 0;
     const marketCap = pair.marketCap ?? pair.fdv ?? 0;
@@ -170,6 +262,7 @@ function analyzeContractSecurity(pair: any, liquidityUsd: number, marketCap: num
 
 function getGeckoChain(chain: string) {
   if (chain === 'ethereum') return 'eth';
+  if (chain === 'hashkey') return 'hashkey';
   return chain;
 }
 
@@ -199,12 +292,14 @@ async function fetchRealCandles(chain: string, pairAddress: string): Promise<OHL
 function getGoPlusChainId(chain: string) {
   if (chain === 'ethereum') return '1';
   if (chain === 'base') return '8453';
+  if (chain === 'hashkey') return null;
   return '1';
 }
 
 async function fetchGoPlusSecurity(chain: string, contractAddress: string) {
   try {
     const chainId = getGoPlusChainId(chain);
+    if (!chainId) return null;
     const res = await fetch(`https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${contractAddress}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const data = await res.json();
@@ -261,7 +356,11 @@ function generateCandlesFromPair(pair: any): OHLCVCandle[] {
 
 async function fetchRealHolders(chain: string, contractAddress: string): Promise<HolderInfo[]> {
   try {
-    const rpcUrl = chain === 'base' ? 'https://mainnet.base.org' : 'https://eth.llamarpc.com';
+    const rpcUrl = chain === 'base'
+      ? 'https://mainnet.base.org'
+      : chain === 'hashkey'
+        ? 'https://mainnet.hsk.xyz'
+        : 'https://eth.llamarpc.com';
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     
     // Fetch Transfer events: topic0 = Transfer(address,address,uint256)

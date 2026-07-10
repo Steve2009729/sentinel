@@ -1,18 +1,27 @@
 // Pulls token data from DexScreener (free, no key) and scores it.
 
+import { fetchHskSwapSignals } from "./hskswapSource";
+
 export interface TokenSignal {
   symbol: string;
   name: string;
-  chain: string;
+  chain: string;           // "base" | "ethereum" | "hashkey"
   priceUsd: number;
   liquidityUsd: number;
   volume24h: number;
   priceChange1h: number;
   pairCreatedAt: number;
   ageHours: number;
-  score: number;        // 0-100
-  action: string;       // ENTER / WATCH / SKIP
+  score: number;           // 0-100
+  action: string;          // ENTER / WATCH / SKIP
   reasoning: string;
+  // Optional enriched fields (present on HSKSwap and enriched DexScreener signals)
+  source?: string;           // "dexscreener" | "hskswap"
+  contractAddress?: string;
+  pairAddress?: string;
+  tradeUrl?: string;
+  dexscreenerUrl?: string;
+  explorerUrl?: string;
 }
 
 const DEXSCREENER = "https://api.dexscreener.com";
@@ -77,6 +86,14 @@ function scoreToken(p: any): TokenSignal {
 
 // Pull trending/active pairs on an EVM chain (default: base)
 export async function fetchSignals(chain = "base"): Promise<TokenSignal[]> {
+  if (chain === "hashkey") {
+    try {
+      return await fetchHskSwapSignals();
+    } catch (e) {
+      console.error("fetchSignals (hashkey) error:", e);
+      return [];
+    }
+  }
   try {
     // Search returns active pairs; we filter to the requested chain
     const res = await fetch(`${DEXSCREENER}/latest/dex/search?q=${chain}`);
