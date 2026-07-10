@@ -179,12 +179,13 @@ export default function Dashboard() {
       try { j = await res.json(); } catch {}
 
       if (j.results?.length > 0) {
-        // success=true OR success=false with fallback results — both are fine
         setLocalResults(j.results);
         addAgentResults(j.results);
         setSteps(j.steps ?? []);
         setLastAgentRun(new Date());
-        setAgentError(""); // clear any previous error
+        setAgentError("");
+        // Also refresh live signals so the feed updates with fresh data
+        loadSignals();
         await loadStats();
       } else if (j.steps?.length > 0) {
         // Got steps but no results — rate-limited, show steps at least
@@ -380,8 +381,8 @@ export default function Dashboard() {
           {/* Right sidebar */}
           <aside style={{ display: "grid", gap: 16 }}>
             <PortfolioPanel onAnalyze={handlePortfolioAnalyze} />
-            <AICopilot />
             <PaymentHistory results={localResults} />
+            <AICopilot />
           </aside>
         </div>
       </main>

@@ -71,8 +71,16 @@ export const useStore = create<SentinelState>()(
       },
 
       disconnectWallet: () => {
-        const { signedAddresses } = get();
-        set({ ...initialState, signedAddresses });
+        // Preserve signedAddresses AND unlocked tiers/assets per wallet
+        // so users don't have to pay again after reconnecting
+        const { signedAddresses, unlockedTiers, unlockedAssets, paymentHistory } = get();
+        set({
+          ...initialState,
+          signedAddresses,
+          unlockedTiers,
+          unlockedAssets,
+          paymentHistory,
+        });
       },
 
       updateBalance: (balance) => set({ balance }),
