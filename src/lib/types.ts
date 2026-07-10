@@ -104,8 +104,8 @@ export interface HolderInfo {
 // Payment tier definitions per blueprint §4.1
 export const PAYMENT_TIERS = {
   1: { name: "Live Launches", costHsk: 0, description: "Real-time new token launches from Clanker, DexScreener & Zyno" },
-  2: { name: "AI Trading Signals", costHsk: 2, description: "Gemini AI analyzed entry/exit signals with % rise predictions and reasoning" },
-  3: { name: "Deep Analytics", costHsk: 1, description: "Line charts, security audit, KOL/whale holders, full token metrics (per asset)" },
+  2: { name: "AI Trading Signals", costHsk: 0.1, description: "Gemini AI analyzed entry/exit signals with % rise predictions and reasoning" },
+  3: { name: "Deep Analytics", costHsk: 0.1, description: "Line charts, security audit, KOL/whale holders, full token metrics (per asset)" },
 } as const;
 
 export type TierLevel = 1 | 2 | 3;

@@ -387,7 +387,7 @@ export default function PortfolioPanel({ onAnalyze }: PortfolioPanelProps) {
                             style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: `linear-gradient(135deg, ${theme.tierDeep}, ${theme.tierPremium})`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
                           >
                             🔍 Deep Analytics
-                            <span style={{ fontSize: 9, opacity: 0.8 }}>(1 HSK)</span>
+                            <span style={{ fontSize: 9, opacity: 0.8 }}>(0.1 HSK)</span>
                           </button>
                         ) : (
                           <div style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: theme.panelAlt, border: `1px solid ${theme.border}`, fontSize: 11, color: theme.muted, textAlign: "center" }}>

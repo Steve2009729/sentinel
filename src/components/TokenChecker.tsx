@@ -81,7 +81,7 @@ export default function TokenChecker({ prefillAddress, prefillChain }: { prefill
         <h2 style={{ fontSize: 14, color: theme.muted, textTransform: "uppercase", letterSpacing: 0.8, margin: 0, fontWeight: 700 }}>
           🔍 Deep Analytics
         </h2>
-        <span className="neon-badge neon-badge-orange" style={{ fontSize: 9 }}>1 HSK/asset</span>
+        <span className="neon-badge neon-badge-orange" style={{ fontSize: 9 }}>0.1 HSK/asset</span>
       </div>
 
       {/* Search */}

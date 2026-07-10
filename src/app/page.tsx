@@ -157,7 +157,7 @@ export default function Home() {
             {[
               {n:"01",i:"🔗",t:"Connect Wallet",d:"Link MetaMask, Trust Wallet, Coinbase, or Rabby via EIP-6963. Your session is authenticated with a one-time signature."},
               {n:"02",i:"⚡",t:"Switch to HashKey",d:"Sentinel auto-switches you to HashKey Chain (ID: 177) for low-cost, transparent on-chain payments and decision logs."},
-              {n:"03",i:"🎯",t:"Choose Your Tier",d:"Free live launches, or unlock AI signals (2 HSK) and deep analytics (1 HSK/asset) to see the full intelligence layer."},
+              {n:"03",i:"🎯",t:"Choose Your Tier",d:"Free live launches, or unlock AI signals (0.1 HSK) and deep analytics (0.1 HSK/asset) to see the full intelligence layer."},
               {n:"04",i:"🚀",t:"Trade & Profit",d:"See live signals, read AI reasoning with rise % projections, and click Trade to swap instantly on Uniswap with one click."},
             ].map((s,i) => (
               <div key={i} className="animate-fadeIn" style={{ animationDelay: `${i*0.12}s`, animationFillMode: "backwards" }}>
@@ -180,8 +180,8 @@ export default function Home() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 20 }}>
           {[
             {e:"🔓",n:"Basic Signals",c:"Free",t:"Tier 1",d:"Live token launches, real-time Base & Ethereum pool discoveries, 60s auto-refresh, chain and action filters",col:theme.tierBasic},
-            {e:"⭐",n:"AI Signals",c:"2 HSK",t:"Tier 2",d:"Google Gemini AI analysis, projected rise %, timeframe predictions, entry reasoning, on-chain decision logs",col:theme.tierPremium,badge:"Popular"},
-            {e:"🔬",n:"Deep Analytics",c:"1 HSK/asset",t:"Tier 3",d:"Line price charts, GoPlus security audit, whale/KOL holder tracking, liquidity metrics, contract address reveal",col:theme.tierDeep},
+            {e:"⭐",n:"AI Signals",c:"0.1 HSK",t:"Tier 2",d:"Google Gemini AI analysis, projected rise %, timeframe predictions, entry reasoning, on-chain decision logs",col:theme.tierPremium,badge:"Popular"},
+            {e:"🔬",n:"Deep Analytics",c:"0.1 HSK/asset",t:"Tier 3",d:"Line price charts, GoPlus security audit, whale/KOL holder tracking, liquidity metrics, contract address reveal",col:theme.tierDeep},
           ].map((p,i) => (
             <div key={i} className="holo-card" style={{ background: theme.panel, border: `1px solid ${p.badge ? p.col+"40" : theme.border}`, borderRadius: 20, padding: "26px 22px", textAlign: "center", position: "relative", overflow: "hidden", boxShadow: p.badge ? `0 0 30px ${p.col}15` : "none" }}>
               <div className="scan-line-overlay" />
@@ -230,7 +230,7 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
                 {q:"How does the AI signal analysis work?",a:"Sentinel scans liquidity pools from DexScreener, GeckoTerminal, Clanker, and Zyno. It calculates a weighted Rise Potential score (0–100) then streams the token metrics to Google Gemini AI to produce entry reasoning and projected rise % estimates. Everything is logged to HashKey Chain for transparency."},
-                {q:"What is HSK and where do I get it?",a:"HSK is the native gas token of HashKey Chain (Chain ID: 177). You can get HSK from HashKey Exchange (hsk.com) or bridge from Ethereum. Sentinel requires 2 HSK for AI signals and 1 HSK per asset for deep analytics."},
+                {q:"What is HSK and where do I get it?",a:"HSK is the native gas token of HashKey Chain (Chain ID: 177). You can get HSK from HashKey Exchange (hsk.com) or bridge from Ethereum. Sentinel requires only 0.1 HSK for AI signals and 0.1 HSK per asset for deep analytics."},
                 {q:"Why are signals refreshed every 60 seconds?",a:"New tokens launch on Base and Ethereum constantly — some gain massive momentum within the first hour. A 60-second refresh ensures you see the freshest launches as they appear without overwhelming the API rate limits."},
                 {q:"How do I trade a token I see in the feed?",a:"Every signal card has a 'Trade ↗' button that links directly to Uniswap with the token's contract address pre-filled for the correct chain (Base or Ethereum). Just connect your wallet on Uniswap and swap."},
                 {q:"What does the security audit check?",a:"The Deep Analytics tier runs automated security checks via GoPlus Security: honeypot detection (can the token be sold?), mintable supply (can owner print more tokens?), pausable transfers, ownership renouncement status, and liquidity lock analysis."},

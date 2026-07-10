@@ -13,8 +13,8 @@ ABOUT SENTINEL PLATFORM:
 
 PAYMENT TIERS:
 - Tier 1 (Free): Live token launches — real-time new pool discoveries from Base & Ethereum, no payment required
-- Tier 2 (2 HSK): AI Trading Signals — Google Gemini analyzes top tokens, gives entry/exit reasoning, projected rise % and timeframes
-- Tier 3 (1 HSK per asset): Deep Analytics — line price charts, security audit (GoPlus), smart money / top holder tracking, advanced metrics
+- Tier 2 (0.1 HSK): AI Trading Signals — Google Gemini analyzes top tokens, gives entry/exit reasoning, projected rise % and timeframes
+- Tier 3 (0.1 HSK per asset): Deep Analytics — line price charts, security audit (GoPlus), smart money / top holder tracking, advanced metrics
 
 HASHKEY CHAIN:
 - HashKey Chain is an EVM-compatible Layer-2 blockchain built for regulated digital assets
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
 
 function generateFallbackResponse(q: string): string {
   if (q.includes("tier") || q.includes("unlock") || q.includes("price") || q.includes("cost") || q.includes("pay")) {
-    return "Sentinel has 3 tiers:\n\n• **Tier 1 (Free)**: Live token launches — real-time Base & Ethereum pool discoveries\n• **Tier 2 (2 HSK)**: AI Signals — Gemini AI analysis with rise % predictions and reasoning\n• **Tier 3 (1 HSK/asset)**: Deep Analytics — price charts, security audit, whale tracking";
+    return "Sentinel has 3 tiers:\n\n• **Tier 1 (Free)**: Live token launches — real-time Base & Ethereum pool discoveries\n• **Tier 2 (0.1 HSK)**: AI Signals — Gemini AI analysis with rise % predictions and reasoning\n• **Tier 3 (0.1 HSK/asset)**: Deep Analytics — price charts, security audit, whale tracking";
   }
   if (q.includes("hashkey") || q.includes("hsk")) {
     return "HashKey Chain is an EVM-compatible Layer-2 blockchain (Chain ID: 177). HSK is its native gas token. Sentinel uses HSK for all tier payments — transfers go directly on-chain for full transparency. You can get HSK from HashKey Exchange.";
@@ -168,7 +168,7 @@ function generateFallbackResponse(q: string): string {
     return "Each signal card has a **Trade ↗** button that links directly to Uniswap with the token pre-filled:\n• Base tokens → Uniswap V3 on Base\n• Ethereum tokens → Uniswap V3 on mainnet\n\nAlways verify the contract address before trading. Use small position sizes on new launches.";
   }
   if (q.includes("chart")) {
-    return "Sentinel's Deep Analytics section shows line price charts powered by lightweight-charts using GeckoTerminal OHLCV data. Charts show 30-minute candles over 24 hours. Unlock Deep Analytics for 1 HSK to see a specific token's chart.";
+    return "Sentinel's Deep Analytics section shows line price charts powered by lightweight-charts using GeckoTerminal OHLCV data. Charts show 30-minute candles over 24 hours. Unlock Deep Analytics for 0.1 HSK to see a specific token's chart.";
   }
   if (q.includes("wallet") || q.includes("connect") || q.includes("metamask")) {
     return "Sentinel supports any EIP-6963 compatible wallet including MetaMask, Trust Wallet, Coinbase Wallet, and Rabby. Connect your wallet, sign the auth message, and it automatically switches you to HashKey Chain (ID: 177) for payments.";
