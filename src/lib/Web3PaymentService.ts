@@ -1,15 +1,20 @@
 // Web3PaymentService.ts — HSK micro-transaction payment gateway
-// Per blueprint §4.1 & §4.2: tiered HSK payments with on-chain verification
 // HSK is the NATIVE gas token on HashKey Chain (like ETH on Ethereum)
+// Payments go directly to the treasury EOA wallet — no contract call needed.
+// gasLimit is hardcoded to 21000 to skip estimateGas (which fails on some RPCs).
 
 import { ethers } from "ethers";
-import { CHAIN_ID, RPC_URL } from "./wagmi";
+import { RPC_URL } from "./wagmi";
 import { PAYMENT_TIERS, type TierLevel, type TxRecord } from "./types";
-// Treasury wallet — reads from env so it's configurable without code changes.
-// Falls back to the deployed contract address on HashKey Chain mainnet.
-const TREASURY_WALLET =
-  process.env.NEXT_PUBLIC_TREASURY_ADDRESS ||
-  "0xD3a7348589267176DcAcBf5dF8c2cA0d892D4f7D";
+
+// ─── TREASURY ─────────────────────────────────────────────────────────────────
+// This is the EOA wallet derived from the PRIVATE_KEY in .env.
+// All tier payments (0.1 HSK) are sent here as plain native transfers.
+const TREASURY_WALLET = "0x1BFAe4EE12c8f2bF17B8EEb8Ea0BcB32AdbB240B";
+
+// Plain native HSK transfer always costs 21 000 gas.
+// Hardcoding this skips the estimateGas RPC call which fails on HashKey Chain.
+const NATIVE_TRANSFER_GAS = BigInt(21000);
 
 const SIGNAL_SETTLEMENT_ABI = [
   "function payForSignal(string tokenSymbol) payable returns (uint256)",
@@ -23,7 +28,6 @@ const SIGNAL_SETTLEMENT_ABI = [
 
 function getProviderOrThrow(): any {
   if (typeof window === "undefined") throw new Error("Cannot use wallet in server context");
-  // Import dynamically to avoid circular dependency at module level
   const { getActiveProvider } = require("./contracts-client");
   const provider = getActiveProvider();
   if (!provider) throw new Error("No wallet connected. Please connect a wallet first.");
@@ -36,52 +40,41 @@ async function getSignerAsync(): Promise<ethers.JsonRpcSigner> {
   return bp.getSigner();
 }
 
-function validateTreasury() {
-  if (!ethers.isAddress(TREASURY_WALLET)) {
-    throw new Error(
-      `Invalid treasury address: "${TREASURY_WALLET}". Check NEXT_PUBLIC_TREASURY_ADDRESS in your environment variables.`
-    );
+/**
+ * Send a plain native HSK transfer with explicit gasLimit so ethers v6
+ * never calls estimateGas (which fails on HashKey Chain RPC).
+ */
+async function sendHsk(signer: ethers.JsonRpcSigner, amountHsk: number): Promise<ethers.TransactionReceipt> {
+  const to = ethers.getAddress(TREASURY_WALLET); // checksum
+  const value = ethers.parseEther(amountHsk.toString());
+
+  console.log(`[Payment] Sending ${amountHsk} HSK → ${to}`);
+
+  const tx = await signer.sendTransaction({
+    to,
+    value,
+    gasLimit: NATIVE_TRANSFER_GAS, // skip estimateGas — plain transfer is always 21 000
+  });
+
+  console.log(`[Payment] tx sent: ${tx.hash}`);
+  const receipt = await tx.wait();
+
+  if (!receipt || receipt.status !== 1) {
+    throw new Error(`Transaction failed: ${tx.hash}`);
   }
-  return ethers.getAddress(TREASURY_WALLET); // returns checksummed address
+
+  console.log(`[Payment] ✅ confirmed in block ${receipt.blockNumber}`);
+  return receipt;
 }
 
-// ─── TIER PAYMENT ─────────────────────────────────────────────────────────────
+// ─── TIER UNLOCK ──────────────────────────────────────────────────────────────
 
-/**
- * Pay for a tier unlock by sending native HSK to the treasury.
- * Blueprint §4.2: transfer HSK fee → wait for receipt → unlock tier.
- */
 export async function payForTierUnlock(tier: TierLevel): Promise<TxRecord> {
   const tierConfig = PAYMENT_TIERS[tier];
-  console.log(`[Web3PaymentService] Starting Tier ${tier} unlock: ${tierConfig.name}`);
-  console.log(`[Web3PaymentService] Cost: ${tierConfig.costHsk} HSK`);
+  console.log(`[Payment] Tier ${tier} unlock — ${tierConfig.costHsk} HSK`);
 
-  // Step 1: Get signer
   const signer = await getSignerAsync();
-  const fromAddress = await signer.getAddress();
-  console.log(`[Web3PaymentService] Payer: ${fromAddress}`);
-
-  // Step 2: Build the transaction (native HSK transfer to treasury)
-  const treasury = validateTreasury();
-  const valueWei = ethers.parseEther(tierConfig.costHsk.toString());
-  console.log(`[Web3PaymentService] Value: ${valueWei.toString()} wei`);
-  console.log(`[Web3PaymentService] Treasury: ${treasury}`);
-
-  // Step 3: Send the transaction
-  console.log(`[Web3PaymentService] Sending transaction...`);
-  const tx = await signer.sendTransaction({
-    to: treasury,
-    value: valueWei,
-  });
-  console.log(`[Web3PaymentService] Transaction sent: ${tx.hash}`);
-
-  // Step 4: Wait for confirmation (blueprint §4.2: UI MUST NOT unlock until receipt confirmed)
-  console.log(`[Web3PaymentService] Waiting for on-chain confirmation...`);
-  const receipt = await tx.wait();
-  if (!receipt || receipt.status !== 1) {
-    throw new Error(`Transaction failed or reverted: ${tx.hash}`);
-  }
-  console.log(`[Web3PaymentService] ✅ Tier ${tier} payment confirmed in block ${receipt.blockNumber}`);
+  const receipt = await sendHsk(signer, tierConfig.costHsk);
 
   return {
     hash: receipt.hash,
@@ -92,33 +85,35 @@ export async function payForTierUnlock(tier: TierLevel): Promise<TxRecord> {
   };
 }
 
-// ─── SIGNAL PAYMENT (via smart contract) ──────────────────────────────────────
+// ─── DEEP ANALYTICS ───────────────────────────────────────────────────────────
 
-/**
- * Pay the per-signal micro-fee through the SignalSettlement contract.
- */
-export async function payForSignal(
-  contractAddress: string,
-  tokenSymbol: string
-): Promise<TxRecord> {
-  console.log(`[Web3PaymentService] Paying for signal: ${tokenSymbol}`);
+export async function payForDeepAnalytics(tokenSymbol: string): Promise<TxRecord> {
+  const cost = PAYMENT_TIERS[3].costHsk;
+  console.log(`[Payment] Deep analytics for ${tokenSymbol} — ${cost} HSK`);
 
   const signer = await getSignerAsync();
-  const treasury = validateTreasury();
-  const feeWei = ethers.parseEther("0.1"); // Fixed 0.1 HSK fee
-  
-  // Send the transaction
-  const tx = await signer.sendTransaction({
-    to: treasury,
-    value: feeWei,
-  });
-  console.log(`[Web3PaymentService] Signal payment tx sent: ${tx.hash}`);
+  const receipt = await sendHsk(signer, cost);
 
-  const receipt = await tx.wait();
-  if (!receipt || receipt.status !== 1) {
-    throw new Error("Signal payment transaction failed");
-  }
-  console.log(`[Web3PaymentService] ✅ Signal payment confirmed: ${receipt.hash}`);
+  return {
+    hash: receipt.hash,
+    type: "tier_unlock",
+    tier: 3,
+    amount: cost.toString(),
+    symbol: tokenSymbol,
+    timestamp: Date.now(),
+  };
+}
+
+// ─── SIGNAL PAYMENT ───────────────────────────────────────────────────────────
+
+export async function payForSignal(
+  _contractAddress: string,
+  tokenSymbol: string
+): Promise<TxRecord> {
+  console.log(`[Payment] Signal payment for ${tokenSymbol}`);
+
+  const signer = await getSignerAsync();
+  const receipt = await sendHsk(signer, 0.1);
 
   return {
     hash: receipt.hash,
@@ -131,9 +126,6 @@ export async function payForSignal(
 
 // ─── DECISION LOG ─────────────────────────────────────────────────────────────
 
-/**
- * Log a trading decision on-chain through the SignalSettlement contract.
- */
 export async function logDecision(
   contractAddress: string,
   tokenSymbol: string,
@@ -141,17 +133,13 @@ export async function logDecision(
   action: string,
   reasoning: string
 ): Promise<TxRecord> {
-  console.log(`[Web3PaymentService] Logging decision: ${tokenSymbol} → ${action} (${score}/100)`);
+  console.log(`[Payment] Logging decision: ${tokenSymbol} → ${action} (${score}/100)`);
 
   const signer = await getSignerAsync();
   const contract = new ethers.Contract(contractAddress, SIGNAL_SETTLEMENT_ABI, signer);
-
   const tx = await contract.logDecision(tokenSymbol, score, action, reasoning);
-  console.log(`[Web3PaymentService] Decision log tx sent: ${tx.hash}`);
-
   const receipt = await tx.wait();
   if (!receipt) throw new Error("Decision log transaction failed");
-  console.log(`[Web3PaymentService] ✅ Decision logged: ${receipt.hash}`);
 
   return {
     hash: receipt.hash,
@@ -162,43 +150,7 @@ export async function logDecision(
   };
 }
 
-// ─── DEEP ANALYTICS MICRO-PAYMENT ─────────────────────────────────────────────
-
-/**
- * Pay a micro-transaction to unlock deep analytics for a specific token.
- * Blueprint §4.1 Tier 3: per-asset micro-tx.
- */
-export async function payForDeepAnalytics(tokenSymbol: string): Promise<TxRecord> {
-  const cost = PAYMENT_TIERS[3].costHsk;
-  console.log(`[Web3PaymentService] Paying for deep analytics: ${tokenSymbol} (${cost} HSK)`);
-
-  const signer = await getSignerAsync();
-  const treasury = validateTreasury();
-  const valueWei = ethers.parseEther(cost.toString());
-
-  const tx = await signer.sendTransaction({
-    to: treasury,
-    value: valueWei,
-  });
-  console.log(`[Web3PaymentService] Deep analytics tx sent: ${tx.hash}`);
-
-  const receipt = await tx.wait();
-  if (!receipt || receipt.status !== 1) {
-    throw new Error(`Deep analytics payment failed: ${tx.hash}`);
-  }
-  console.log(`[Web3PaymentService] ✅ Deep analytics payment confirmed for ${tokenSymbol}`);
-
-  return {
-    hash: receipt.hash,
-    type: "tier_unlock",
-    tier: 3,
-    amount: cost.toString(),
-    symbol: tokenSymbol,
-    timestamp: Date.now(),
-  };
-}
-
-// ─── READ-ONLY HELPERS ────────────────────────────────────────────────────────
+// ─── READ-ONLY STATS ──────────────────────────────────────────────────────────
 
 export async function getContractStats(contractAddress: string) {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
