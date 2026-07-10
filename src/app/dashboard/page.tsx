@@ -13,6 +13,7 @@ import WalletConnect from "@/components/WalletConnect";
 import PaymentTierGate from "@/components/PaymentTierGate";
 import AICopilot from "@/components/AICopilot";
 import SwapWidget, { type SwapTarget } from "@/components/SwapWidget";
+import PortfolioPanel from "@/components/PortfolioPanel";
 import { isWalletAvailable, getUserAddress } from "@/lib/contracts-client";
 import { chainMeta } from "@/lib/contract";
 import type { Signal, AgentResult } from "@/lib/types";
@@ -41,6 +42,7 @@ export default function Dashboard() {
   const [agentCountdown, setAgentCountdown] = useState(300);
   const [stats, setStats] = useState({ signalsPaid: 0, decisions: 0, hskSpent: 0 });
   const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
+  const [portfolioPrefill, setPortfolioPrefill] = useState<{ address: string; chain: string } | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const agentTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasInitialized = useRef(false);
@@ -199,6 +201,15 @@ export default function Dashboard() {
     }
   }
 
+  // ─── PORTFOLIO → DEEP ANALYTICS ─────────────────────────────────────────────
+
+  function handlePortfolioAnalyze(contractAddress: string, chain: string) {
+    setPortfolioPrefill({ address: contractAddress, chain });
+    setActiveTab("checker");
+    // Scroll main content area to top so analytics is visible
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   // ─── LOADING SCREEN ──────────────────────────────────────────────────────────
 
   if (loading || !walletReady) {
@@ -265,9 +276,9 @@ export default function Dashboard() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 4, marginBottom: 16, flexWrap: "wrap" }}>
-          <TabButton label="📡 Live Launches" active={activeTab === "signals"} onClick={() => setActiveTab("signals")} />
-          <TabButton label="🤖 AI Signals" active={activeTab === "ai-signals"} onClick={() => setActiveTab("ai-signals")} />
-          <TabButton label="🔍 Deep Analytics" active={activeTab === "checker"} onClick={() => setActiveTab("checker")} />
+          <TabButton label="📡 Live Launches" active={activeTab === "signals"} onClick={() => { setActiveTab("signals"); setPortfolioPrefill(null); }} />
+          <TabButton label="🤖 AI Signals" active={activeTab === "ai-signals"} onClick={() => { setActiveTab("ai-signals"); setPortfolioPrefill(null); }} />
+          <TabButton label="🔍 Deep Analytics" active={activeTab === "checker"} onClick={() => { setActiveTab("checker"); setPortfolioPrefill(null); }} />
         </div>
 
         {/* Content grid */}
@@ -349,11 +360,17 @@ export default function Dashboard() {
                 </div>
               </PaymentTierGate>
             )}
-            {activeTab === "checker" && <TokenChecker />}
+            {activeTab === "checker" && (
+              <TokenChecker
+                prefillAddress={portfolioPrefill?.address}
+                prefillChain={portfolioPrefill?.chain}
+              />
+            )}
           </section>
 
           {/* Right sidebar */}
           <aside style={{ display: "grid", gap: 16 }}>
+            <PortfolioPanel onAnalyze={handlePortfolioAnalyze} />
             <AICopilot />
             <PaymentHistory results={localResults} />
           </aside>

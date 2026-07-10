@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { theme } from "@/lib/theme";
 import type { TokenAnalytics } from "@/lib/types";
 import TradingViewChart from "./TradingViewChart";
@@ -24,13 +24,26 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
   );
 }
 
-export default function TokenChecker() {
-  const [address, setAddress] = useState("");
-  const [chain, setChain] = useState("base");
+export default function TokenChecker({ prefillAddress, prefillChain }: { prefillAddress?: string; prefillChain?: string } = {}) {
+  const [address, setAddress] = useState(prefillAddress ?? "");
+  const [chain, setChain] = useState(prefillChain ?? "base");
   const [loading, setLoading] = useState(false);
   const [analytics, setAnalytics] = useState<TokenAnalytics | null>(null);
   const [error, setError] = useState("");
   const { isAssetUnlocked } = useStore();
+
+  // Auto-analyze when a prefill address is injected
+  useEffect(() => {
+    if (prefillAddress && prefillAddress.length > 10) {
+      setAddress(prefillAddress);
+      setChain(prefillChain ?? "hashkey");
+      // Trigger analysis automatically
+      setTimeout(() => {
+        const btn = document.getElementById("token-checker-analyze-btn");
+        if (btn) btn.click();
+      }, 100);
+    }
+  }, [prefillAddress, prefillChain]);
 
   async function handleSearch() {
     const trimmed = address.trim();
@@ -90,7 +103,7 @@ export default function TokenChecker() {
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           style={{ flex: 1, background: theme.panel, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontFamily: "var(--font-geist-mono), monospace", outline: "none" }}
         />
-        <button onClick={handleSearch} disabled={loading} className="btn-primary" style={{ padding: "8px 18px", fontSize: 13, whiteSpace: "nowrap" }}>
+        <button id="token-checker-analyze-btn" onClick={handleSearch} disabled={loading} className="btn-primary" style={{ padding: "8px 18px", fontSize: 13, whiteSpace: "nowrap" }}>
           {loading ? "…" : "Analyze"}
         </button>
       </div>
