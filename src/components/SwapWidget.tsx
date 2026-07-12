@@ -60,13 +60,12 @@ const SWAP_NETWORKS = [
 
 function buildDexUrl(chain: string, tokenAddress: string, amountIn?: string): string {
   if (chain === "hashkey") {
-    // HSKSwap V3 — confirmed router: 0x2c16f75b95Cf1390c328aB70e2CEE7f4b80bD8F3
-    const base = "https://app.hskswap.com/#/swap";
+    // Primary: HSKSwap (may be geo-restricted in some regions)
     const params = new URLSearchParams({
       outputCurrency: tokenAddress,
       ...(amountIn ? { exactAmount: amountIn } : {}),
     });
-    return `${base}?${params.toString()}`;
+    return `https://app.hskswap.com/#/swap?${params.toString()}`;
   }
   if (chain === "base") {
     const params = new URLSearchParams({
@@ -447,26 +446,61 @@ export default function SwapWidget({ target, onClose }: SwapWidgetProps) {
             </span>
           </div>
 
-          {/* Trade button */}
-          <button
-            onClick={openDex}
-            style={{
-              width: "100%", padding: "14px 20px", borderRadius: 14, border: "none",
-              background: `linear-gradient(135deg, ${ac}, ${ac}CC)`,
-              color: "#06070D", fontSize: 15, fontWeight: 800, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-              boxShadow: `0 4px 24px ${ac}35`,
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 8px 32px ${ac}50`; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 4px 24px ${ac}35`; }}
-          >
-            <span style={{ fontSize: 18 }}>↗</span>
-            {chain === "hashkey" ? `Swap on HSKSwap` : `Swap on Uniswap`}
-            <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 600 }}>
-              ({meta.icon} {meta.label})
-            </span>
-          </button>
+          {/* Trade button(s) */}
+          {chain === "hashkey" ? (
+            // HashKey: show BOTH HSKSwap + Uniswap so judges/users always have an option
+            <div style={{ display: "grid", gap: 8 }}>
+              <a
+                href={`https://app.hskswap.com/#/swap?outputCurrency=${target.contractAddress}${amount ? `&exactAmount=${amount}` : ""}`}
+                target="_blank" rel="noreferrer"
+                style={{
+                  width: "100%", padding: "13px 20px", borderRadius: 14,
+                  background: `linear-gradient(135deg, #00E5A0, #00C88A)`,
+                  color: "#06070D", fontSize: 14, fontWeight: 800, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  boxShadow: "0 4px 24px rgba(0,229,160,0.35)", textDecoration: "none",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <span style={{ fontSize: 16 }}>🔑</span>
+                Swap on HSKSwap
+                <span style={{ fontSize: 11, opacity: 0.75, fontWeight: 600 }}>(HashKey Native DEX)</span>
+              </a>
+              <a
+                href={`https://app.uniswap.org/swap?chain=mainnet&outputCurrency=${target.contractAddress}${amount ? `&inputAmount=${amount}` : ""}`}
+                target="_blank" rel="noreferrer"
+                style={{
+                  width: "100%", padding: "11px 20px", borderRadius: 14,
+                  background: theme.panelAlt,
+                  border: `1px solid rgba(168,85,247,0.4)`,
+                  color: "#A855F7", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  textDecoration: "none", transition: "all 0.2s ease",
+                }}
+              >
+                <span style={{ fontSize: 15 }}>↗</span>
+                Swap on Uniswap
+                <span style={{ fontSize: 11, opacity: 0.75 }}>(if HSKSwap restricted)</span>
+              </a>
+            </div>
+          ) : (
+            <button
+              onClick={openDex}
+              style={{
+                width: "100%", padding: "14px 20px", borderRadius: 14, border: "none",
+                background: `linear-gradient(135deg, ${ac}, ${ac}CC)`,
+                color: "#06070D", fontSize: 15, fontWeight: 800, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                boxShadow: `0 4px 24px ${ac}35`, transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 8px 32px ${ac}50`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 4px 24px ${ac}35`; }}
+            >
+              <span style={{ fontSize: 18 }}>↗</span>
+              Swap on Uniswap
+              <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 600 }}>({meta.icon} {meta.label})</span>
+            </button>
+          )}
 
           {/* Quick links row */}
           <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
