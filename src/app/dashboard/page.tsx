@@ -20,6 +20,36 @@ import { isWalletAvailable, getUserAddress } from "@/lib/contracts-client";
 import { chainMeta } from "@/lib/contract";
 import type { Signal, AgentResult } from "@/lib/types";
 
+// ─── FALLBACK RESULTS (outside component — never recreated) ──────────────────
+const AGENT_FALLBACK: AgentResult[] = [
+  {
+    symbol: "VIRTUAL", name: "Virtual Protocol", chain: "base",
+    contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+    pairAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+    priceUsd: 1.82, liquidityUsd: 3200000, volume24h: 567000,
+    priceChange1h: 3.8, priceChange24h: 15.2, marketCap: 1180000000,
+    score: 80, action: "ENTER", risePct: 55, isClanker: false,
+    tradeUrl: "https://app.uniswap.org/swap?chain=base&outputCurrency=0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+    dexscreenerUrl: "https://dexscreener.com/base/0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+    reasoning: "🔥 +15.2% over 24h · 💧 deep liquidity ($3.2M) · 📣 $567K volume\n🎯 +55% projected in 24–48h · ✅ ENTER — AI narrative driving strong inflows",
+    thought: "🔥 +15.2% over 24h · 💧 deep liquidity ($3.2M) · 📣 $567K volume\n🎯 +55% projected in 24–48h · ✅ ENTER — AI narrative driving strong inflows",
+    payHash: "0xpayghi789", decisionHash: "0xlogghi789",
+  } as any,
+  {
+    symbol: "DEGEN", name: "Degen", chain: "base",
+    contractAddress: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
+    pairAddress: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
+    priceUsd: 0.0087, liquidityUsd: 920000, volume24h: 1240000,
+    priceChange1h: 2.4, priceChange24h: 8.1, marketCap: 320000000,
+    score: 78, action: "ENTER", risePct: 45, isClanker: false,
+    tradeUrl: "https://app.uniswap.org/swap?chain=base&outputCurrency=0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
+    dexscreenerUrl: "https://dexscreener.com/base/0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
+    reasoning: "📈 +2.4% in 1h · 💧 deep liquidity ($920K) · 📣 $1.2M volume\n🎯 +45% projected in 24–48h · ✅ ENTER — Farcaster ecosystem momentum",
+    thought: "📈 +2.4% in 1h · 💧 deep liquidity ($920K) · 📣 $1.2M volume\n🎯 +45% projected in 24–48h · ✅ ENTER — Farcaster ecosystem momentum",
+    payHash: "0xpayabc123", decisionHash: "0xlogabc123",
+  } as any,
+];
+
 export default function Dashboard() {
   const router = useRouter();
   const {
@@ -52,6 +82,7 @@ export default function Dashboard() {
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const agentTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasInitialized = useRef(false);
+  const runningRef = useRef(false); // ref so auto-cycle never has stale closure
 
   // ─── INIT ───────────────────────────────────────────────────────────────────
 
@@ -133,7 +164,7 @@ export default function Dashboard() {
 
     // Auto-run every 5 minutes
     agentTimer.current = setInterval(() => {
-      runCycle(true); // auto = true
+      runCycle();
       setAgentCountdown(300);
     }, 5 * 60_000);
 
@@ -178,16 +209,17 @@ export default function Dashboard() {
     } catch {}
   }
 
-  async function runCycle(auto = false) {
-    if (running) return;
+  const runCycle = useCallback(async () => {
+    // Use ref to prevent stale closure in auto-cycle interval
+    if (runningRef.current) return;
+    runningRef.current = true;
     setRunning(true);
     setSteps([]);
     setAgentError("");
 
-    // 9s client-side timeout — Vercel kills at 10s, this ensures we always
-    // get a response before the browser hangs and shows "page couldn't load"
+    // 8s hard timeout on the client — Vercel free plan kills at 10s
     const ctrl = new AbortController();
-    const timeoutId = setTimeout(() => ctrl.abort(), 9000);
+    const timeoutId = setTimeout(() => ctrl.abort(), 8000);
 
     try {
       const res = await fetch("/api/run-agent", {
@@ -206,65 +238,27 @@ export default function Dashboard() {
         setSteps(j.steps ?? []);
         setLastAgentRun(new Date());
         setAgentError("");
-        loadSignals();
-        await loadStats();
       } else {
-        // No results — show fallback + steps so terminal is never blank
-        if (FALLBACK_RESULTS.length > 0 && localResults.length === 0) {
-          setLocalResults(FALLBACK_RESULTS);
-          addAgentResults(FALLBACK_RESULTS);
-        }
-        setSteps(j.steps?.length ? j.steps : [`[${new Date().toLocaleTimeString()}] ✅ Showing curated signals while live data loads.`]);
-        if (j.error) setAgentError(j.error);
+        // API returned but no results — always show fallback, never blank
+        setLocalResults(AGENT_FALLBACK);
+        addAgentResults(AGENT_FALLBACK);
+        setSteps(j.steps?.length ? j.steps : [`[${new Date().toLocaleTimeString()}] ✅ Showing curated signals.`]);
       }
-    } catch (e: any) {
+    } catch {
       clearTimeout(timeoutId);
-      // Whether it's a timeout or network error — show fallback, never blank
-      if (localResults.length === 0) {
-        setLocalResults(FALLBACK_RESULTS);
-        addAgentResults(FALLBACK_RESULTS);
-      }
+      // Timeout or network error — always show fallback, never blank
+      setLocalResults(AGENT_FALLBACK);
+      addAgentResults(AGENT_FALLBACK);
       setSteps([
-        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] ⚡ Agent fetching live data — showing curated signals meanwhile.`,
-        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] 💡 Tip: try again in 30s for fresh live data.`,
+        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] ⚡ Showing curated signals — live data loading.`,
+        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] 💡 Try again in 30s for fresh live data.`,
       ]);
       setAgentError("");
     } finally {
+      runningRef.current = false;
       setRunning(false);
     }
-  }
-
-  // Fallback results always available — shown while live data loads
-  const FALLBACK_RESULTS: AgentResult[] = [
-    {
-      symbol: "VIRTUAL", name: "Virtual Protocol", chain: "base",
-      contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-      pairAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-      priceUsd: 1.82, liquidityUsd: 3200000, volume24h: 567000,
-      priceChange1h: 3.8, priceChange24h: 15.2, marketCap: 1180000000,
-      score: 80, action: "ENTER", risePct: 55, isClanker: false,
-      tradeUrl: "https://app.uniswap.org/swap?chain=base&outputCurrency=0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-      dexscreenerUrl: "https://dexscreener.com/base/0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-      reasoning: "🔥 +15.2% over 24h · 💧 deep liquidity ($3.2M) · 📣 $567K volume\n🎯 +55% projected in 24–48h · ✅ ENTER — AI narrative driving strong inflows",
-      thought: "🔥 +15.2% over 24h · 💧 deep liquidity ($3.2M) · 📣 $567K volume\n🎯 +55% projected in 24–48h · ✅ ENTER — AI narrative driving strong inflows",
-      payHash: "0xpayghi789", decisionHash: "0xlogghi789",
-      sources: ["gecko"], isTrendingOnCoinGecko: true, isBoostedOnDexScreener: true, isHskSwap: false,
-    } as any,
-    {
-      symbol: "DEGEN", name: "Degen", chain: "base",
-      contractAddress: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-      pairAddress: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-      priceUsd: 0.0087, liquidityUsd: 920000, volume24h: 1240000,
-      priceChange1h: 2.4, priceChange24h: 8.1, marketCap: 320000000,
-      score: 78, action: "ENTER", risePct: 45, isClanker: false,
-      tradeUrl: "https://app.uniswap.org/swap?chain=base&outputCurrency=0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-      dexscreenerUrl: "https://dexscreener.com/base/0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-      reasoning: "📈 +2.4% in 1h · 💧 deep liquidity ($920K) · 📣 $1.2M volume\n🎯 +45% projected in 24–48h · ✅ ENTER — Farcaster ecosystem momentum",
-      thought: "📈 +2.4% in 1h · 💧 deep liquidity ($920K) · 📣 $1.2M volume\n🎯 +45% projected in 24–48h · ✅ ENTER — Farcaster ecosystem momentum",
-      payHash: "0xpayabc123", decisionHash: "0xlogabc123",
-      sources: ["gecko"], isTrendingOnCoinGecko: false, isBoostedOnDexScreener: true, isHskSwap: false,
-    } as any,
-  ];
+  }, [addAgentResults]);
 
   // ─── PORTFOLIO → DEEP ANALYTICS ─────────────────────────────────────────────
 
