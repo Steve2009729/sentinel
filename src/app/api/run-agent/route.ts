@@ -163,8 +163,9 @@ function parseDexScreenerPairs(raw: unknown, chain: string, seen: Set<string>): 
 export async function POST() {
   const t0 = Date.now();
   const steps: string[] = [];
-  const log = (m: string) =>
-    steps.push(`[${new Date().toLocaleTimeString("en-US", { hour12: false })}] ${m}`);
+  const log = (m: string) => {
+    if (typeof m === "string") steps.push(`[${new Date().toLocaleTimeString("en-US", { hour12: false })}] ${m}`);
+  };
 
   try {
     log("🔍 Sentinel AI Agent initializing…");

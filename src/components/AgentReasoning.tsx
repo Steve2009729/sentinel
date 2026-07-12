@@ -49,9 +49,11 @@ export default function AgentReasoning({ results, steps, running, onSwap, lastRu
     if (steps.length > 0) {
       let i = 0;
       setDisplayedSteps([]);
+      // Guard: filter out any non-string entries from the API before animating
+      const safeSteps = steps.filter((s): s is string => typeof s === "string");
       const interval = setInterval(() => {
-        if (i < steps.length) {
-          setDisplayedSteps((prev) => [...prev, steps[i]]);
+        if (i < safeSteps.length) {
+          setDisplayedSteps((prev) => [...prev, safeSteps[i]]);
           i++;
           stepsEndRef.current?.scrollIntoView({ behavior: "smooth" });
         } else {
@@ -97,7 +99,7 @@ export default function AgentReasoning({ results, steps, running, onSwap, lastRu
               DexScreener, GeckoTerminal, CoinGecko, and HSKSwap.
             </div>
           )}
-          {displayedSteps.map((s, i) => {
+          {displayedSteps.filter(s => typeof s === "string").map((s, i) => {
             const isError   = s.includes("❌") || s.includes("Fatal");
             const isSuccess = s.includes("✅") || s.includes("🏁") || s.includes("generated");
             const isInfo    = s.startsWith("  ›");
@@ -244,7 +246,7 @@ export default function AgentReasoning({ results, steps, running, onSwap, lastRu
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       flexWrap: "wrap", gap: 8 }}>
                       <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                        {(res.sources ?? []).map((src: string) => (
+                        {(res.sources ?? []).filter((src: any) => typeof src === "string").map((src: string) => (
                           <span key={src} style={{ fontSize: 9, color: theme.muted, padding: "1px 6px",
                             background: theme.panelAlt, borderRadius: 4, border: `1px solid ${theme.border}` }}>
                             {src.replace("gecko_", "")}
