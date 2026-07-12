@@ -15,6 +15,7 @@ import PaymentTierGate from "@/components/PaymentTierGate";
 import AICopilot from "@/components/AICopilot";
 import SwapWidget, { type SwapTarget } from "@/components/SwapWidget";
 import PortfolioPanel from "@/components/PortfolioPanel";
+import WalletPanel from "@/components/WalletPanel";
 import { isWalletAvailable, getUserAddress } from "@/lib/contracts-client";
 import { chainMeta } from "@/lib/contract";
 import type { Signal, AgentResult } from "@/lib/types";
@@ -404,6 +405,7 @@ export default function Dashboard() {
 
           {/* Right sidebar */}
           <aside style={{ display: "grid", gap: 16 }}>
+            <WalletPanel />
             <VerificationBadge walletAddress={walletAddress} />
             <PortfolioPanel onAnalyze={handlePortfolioAnalyze} />
             <PaymentHistory results={localResults} />

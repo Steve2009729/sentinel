@@ -43,11 +43,18 @@ interface SwapWidgetProps {
 
 // ─── CHAIN METADATA ───────────────────────────────────────────────────────────
 
-const CHAIN_META: Record<string, { label: string; nativeSymbol: string; nativeName: string; color: string; icon: string }> = {
-  hashkey: { label: "HashKey Chain", nativeSymbol: "HSK", nativeName: "HashKey Token", color: "#00E5A0", icon: "🔑" },
-  base:    { label: "Base",          nativeSymbol: "ETH", nativeName: "Ethereum",       color: "#5B8DEF", icon: "⚡" },
-  ethereum:{ label: "Ethereum",      nativeSymbol: "ETH", nativeName: "Ethereum",       color: "#A855F7", icon: "Ξ" },
+const CHAIN_META: Record<string, { label: string; nativeSymbol: string; nativeName: string; color: string; icon: string; uniswapChain: string }> = {
+  hashkey: { label: "HashKey Chain", nativeSymbol: "HSK", nativeName: "HashKey Token", color: "#00E5A0", icon: "🔑", uniswapChain: "" },
+  base:    { label: "Base",          nativeSymbol: "ETH", nativeName: "Ethereum",       color: "#5B8DEF", icon: "⚡", uniswapChain: "base" },
+  ethereum:{ label: "Ethereum",      nativeSymbol: "ETH", nativeName: "Ethereum",       color: "#A855F7", icon: "Ξ",  uniswapChain: "mainnet" },
 };
+
+// Network options user can swap on (independent of the signal's chain)
+const SWAP_NETWORKS = [
+  { id: "hashkey",  label: "HashKey",  icon: "🔑", color: "#00E5A0" },
+  { id: "base",     label: "Base",     icon: "⚡", color: "#5B8DEF" },
+  { id: "ethereum", label: "Ethereum", icon: "Ξ",  color: "#A855F7" },
+];
 
 // ─── DEX LINK BUILDER ─────────────────────────────────────────────────────────
 
@@ -169,9 +176,16 @@ export default function SwapWidget({ target, onClose }: SwapWidgetProps) {
   const [priceSource, setPriceSource] = useState<string>("");
   const [priceLoading, setPriceLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  // User can override which network to swap on — defaults to the signal's chain
+  const [selectedNetwork, setSelectedNetwork] = useState<string>(target?.chain ?? "base");
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const chain = target?.chain ?? "base";
+  // Sync network to token's chain on target change
+  useEffect(() => {
+    if (target?.chain) setSelectedNetwork(target.chain);
+  }, [target?.chain]);
+
+  const chain = selectedNetwork;
   const meta = CHAIN_META[chain] ?? CHAIN_META.base;
   const ac = target?.action ? actionColor(target.action) : theme.accent;
 
@@ -307,6 +321,32 @@ export default function SwapWidget({ target, onClose }: SwapWidgetProps) {
               <div style={{ fontSize: 12, fontWeight: 700, color: meta.color }}>
                 {chain === "hashkey" ? "HSKSwap V3" : "Uniswap V3"}
               </div>
+            </div>
+          </div>
+
+          {/* Network selector — user picks which DEX/chain to swap on */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, color: theme.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, fontWeight: 700 }}>
+              Swap Network
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+              {SWAP_NETWORKS.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => setSelectedNetwork(n.id)}
+                  style={{
+                    padding: "8px 6px", borderRadius: 10, border: `1px solid ${selectedNetwork === n.id ? n.color + "60" : theme.border}`,
+                    background: selectedNetwork === n.id ? `${n.color}12` : theme.panelAlt,
+                    color: selectedNetwork === n.id ? n.color : theme.muted,
+                    cursor: "pointer", fontSize: 11, fontWeight: 700, transition: "all 0.15s",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                    boxShadow: selectedNetwork === n.id ? `0 0 12px ${n.color}15` : "none",
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{n.icon}</span>
+                  <span>{n.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
