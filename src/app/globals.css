@@ -537,7 +537,7 @@ body {
 }
 
 /* ─── RESPONSIVE ────────────────────────────────────────────────────────── */
-/* Dashboard nav — hide label text on mobile, show icons only */
+/* Dashboard nav — hide on mobile */
 @media (max-width: 768px) {
   .dashboard-nav {
     display: none !important;
@@ -550,6 +550,9 @@ body {
   .wallet-grid {
     grid-template-columns: 1fr !important;
   }
+
+  .dashboard-header {
+    flex-direction: column !important;
     gap: 10px !important;
     align-items: stretch !important;
     padding: 12px 14px !important;
@@ -583,11 +586,7 @@ body {
     grid-template-columns: 1fr !important;
   }
 
-  /* Dashboard: on mobile, sidebar goes BELOW main content, not above */
-  .dashboard-grid {
-    grid-template-columns: 1fr !important;
-  }
-
+  /* Dashboard: sidebar goes below main content on mobile */
   .dashboard-grid aside {
     order: 2;
   }
