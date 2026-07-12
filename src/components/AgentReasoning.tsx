@@ -10,6 +10,7 @@ interface AgentReasoningProps {
   steps: string[];
   running: boolean;
   onSwap: (target: SwapTarget) => void;
+  lastRun?: Date | null;
 }
 
 function ScoreMeter({ score, action }: { score: number; action: string }) {
@@ -29,7 +30,7 @@ function ScoreMeter({ score, action }: { score: number; action: string }) {
   );
 }
 
-export default function AgentReasoning({ results, steps, running, onSwap }: AgentReasoningProps) {
+export default function AgentReasoning({ results, steps, running, onSwap, lastRun }: AgentReasoningProps) {
   const [displayedSteps, setDisplayedSteps] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
   const stepsEndRef = useRef<HTMLDivElement>(null);
@@ -115,9 +116,27 @@ export default function AgentReasoning({ results, steps, running, onSwap }: Agen
       {/* ─── SIGNAL CARDS ──────────────────────────────── */}
       {showResults && results.length > 0 && (
         <div>
-          <div style={{ fontSize: 11, color: theme.muted, textTransform: "uppercase",
-            letterSpacing: 0.6, fontWeight: 700, marginBottom: 10 }}>
-            📡 AI Research Signals — {results.length} tokens analyzed
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: theme.muted, textTransform: "uppercase", letterSpacing: 0.6, fontWeight: 700 }}>
+              📡 Live AI Signals — {results.length} tokens analyzed
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {/* Source badges */}
+              <span style={{ fontSize: 9, color: theme.muted, padding: "2px 7px", background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 4 }}>
+                GeckoTerminal
+              </span>
+              <span style={{ fontSize: 9, color: theme.muted, padding: "2px 7px", background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 4 }}>
+                DexScreener
+              </span>
+              <span style={{ fontSize: 9, color: theme.muted, padding: "2px 7px", background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 4 }}>
+                CoinGecko
+              </span>
+              {lastRun && (
+                <span style={{ fontSize: 9, color: theme.accent, fontFamily: "var(--font-geist-mono), monospace", marginLeft: 4 }}>
+                  ⏱ {lastRun.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
           <div style={{ display: "grid", gap: 12 }}>
             {results.map((r, i) => {

@@ -20,35 +20,7 @@ import { isWalletAvailable, getUserAddress } from "@/lib/contracts-client";
 import { chainMeta } from "@/lib/contract";
 import type { Signal, AgentResult } from "@/lib/types";
 
-// ─── FALLBACK RESULTS (outside component — never recreated) ──────────────────
-const AGENT_FALLBACK: AgentResult[] = [
-  {
-    symbol: "VIRTUAL", name: "Virtual Protocol", chain: "base",
-    contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-    pairAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-    priceUsd: 1.82, liquidityUsd: 3200000, volume24h: 567000,
-    priceChange1h: 3.8, priceChange24h: 15.2, marketCap: 1180000000,
-    score: 80, action: "ENTER", risePct: 55, isClanker: false,
-    tradeUrl: "https://app.uniswap.org/swap?chain=base&outputCurrency=0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-    dexscreenerUrl: "https://dexscreener.com/base/0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-    reasoning: "🔥 +15.2% over 24h · 💧 deep liquidity ($3.2M) · 📣 $567K volume\n🎯 +55% projected in 24–48h · ✅ ENTER — AI narrative driving strong inflows",
-    thought: "🔥 +15.2% over 24h · 💧 deep liquidity ($3.2M) · 📣 $567K volume\n🎯 +55% projected in 24–48h · ✅ ENTER — AI narrative driving strong inflows",
-    payHash: "0xpayghi789", decisionHash: "0xlogghi789",
-  } as any,
-  {
-    symbol: "DEGEN", name: "Degen", chain: "base",
-    contractAddress: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-    pairAddress: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-    priceUsd: 0.0087, liquidityUsd: 920000, volume24h: 1240000,
-    priceChange1h: 2.4, priceChange24h: 8.1, marketCap: 320000000,
-    score: 78, action: "ENTER", risePct: 45, isClanker: false,
-    tradeUrl: "https://app.uniswap.org/swap?chain=base&outputCurrency=0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-    dexscreenerUrl: "https://dexscreener.com/base/0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
-    reasoning: "📈 +2.4% in 1h · 💧 deep liquidity ($920K) · 📣 $1.2M volume\n🎯 +45% projected in 24–48h · ✅ ENTER — Farcaster ecosystem momentum",
-    thought: "📈 +2.4% in 1h · 💧 deep liquidity ($920K) · 📣 $1.2M volume\n🎯 +45% projected in 24–48h · ✅ ENTER — Farcaster ecosystem momentum",
-    payHash: "0xpayabc123", decisionHash: "0xlogabc123",
-  } as any,
-];
+// AGENT_FALLBACK removed — agent now always returns live data or an explicit error
 
 export default function Dashboard() {
   const router = useRouter();
@@ -217,9 +189,9 @@ export default function Dashboard() {
     setSteps([]);
     setAgentError("");
 
-    // 8s hard timeout on the client — Vercel free plan kills at 10s
+    // 25s hard timeout — API needs up to ~7s for live data fetches
     const ctrl = new AbortController();
-    const timeoutId = setTimeout(() => ctrl.abort(), 8000);
+    const timeoutId = setTimeout(() => ctrl.abort(), 25000);
 
     try {
       const res = await fetch("/api/run-agent", {
@@ -239,21 +211,29 @@ export default function Dashboard() {
         setLastAgentRun(new Date());
         setAgentError("");
       } else {
-        // API returned but no results — always show fallback, never blank
-        setLocalResults(AGENT_FALLBACK);
-        addAgentResults(AGENT_FALLBACK);
-        setSteps(j.steps?.length ? j.steps : [`[${new Date().toLocaleTimeString()}] ✅ Showing curated signals.`]);
+        // API returned but no live results — show steps log + retry prompt
+        setLocalResults([]);
+        setSteps(j.steps?.length
+          ? j.steps
+          : [`[${new Date().toLocaleTimeString("en-US", { hour12: false })}] ⚠️ No live data returned.`]
+        );
+        setAgentError(
+          j.message || "Live market APIs returned no data right now. Please retry in 30 seconds."
+        );
       }
-    } catch {
+    } catch (err: any) {
       clearTimeout(timeoutId);
-      // Timeout or network error — always show fallback, never blank
-      setLocalResults(AGENT_FALLBACK);
-      addAgentResults(AGENT_FALLBACK);
+      const isAbort = err?.name === "AbortError";
+      setLocalResults([]);
       setSteps([
-        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] ⚡ Showing curated signals — live data loading.`,
-        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] 💡 Try again in 30s for fresh live data.`,
+        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] ${isAbort ? "⏱️ Request timed out — APIs are slow right now." : "❌ Network error."}`,
+        `[${new Date().toLocaleTimeString("en-US", { hour12: false })}] 💡 Please retry in 30 seconds.`,
       ]);
-      setAgentError("");
+      setAgentError(
+        isAbort
+          ? "Analysis timed out. Live APIs are responding slowly — please retry."
+          : "Connection error. Check your internet and retry."
+      );
     } finally {
       runningRef.current = false;
       setRunning(false);
@@ -415,7 +395,7 @@ export default function Dashboard() {
                   <button onClick={() => runCycle()} style={{ padding: "4px 10px", background: `${theme.warning}15`, border: `1px solid ${theme.warning}40`, borderRadius: 6, color: theme.warning, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Retry</button>
                 </div>
               )}
-              <AgentReasoning results={localResults} steps={steps} running={running} onSwap={(t) => { setSwapTarget(t); switchTab("swap"); }} />
+              <AgentReasoning results={localResults} steps={steps} running={running} onSwap={(t) => { setSwapTarget(t); switchTab("swap"); }} lastRun={lastAgentRun} />
             </div>
           </PaymentTierGate>
         )}
