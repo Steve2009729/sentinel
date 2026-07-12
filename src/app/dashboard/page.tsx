@@ -47,6 +47,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ signalsPaid: 0, decisions: 0, hskSpent: 0 });
   const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
   const [portfolioPrefill, setPortfolioPrefill] = useState<{ address: string; chain: string } | null>(null);
+  // ─── ALL HOOKS MUST BE BEFORE ANY RETURN ─────────────────────────────────────
+  const [localTab, setLocalTab] = useState<"signals"|"ai-signals"|"swap"|"checker"|"wallet"|"chat">("signals");
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const agentTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasInitialized = useRef(false);
@@ -289,8 +291,7 @@ export default function Dashboard() {
 
   // ─── DASHBOARD ───────────────────────────────────────────────────────────────
 
-  // Local tab state — extends the store's 3-tab system with swap/wallet/chat
-  const [localTab, setLocalTab] = useState<"signals"|"ai-signals"|"swap"|"checker"|"wallet"|"chat">("signals");
+  // Tab switcher — defined after loading check but uses the state declared above
   function switchTab(t: typeof localTab) {
     setLocalTab(t);
     if (t === "signals" || t === "ai-signals" || t === "checker") setActiveTab(t);
