@@ -537,9 +537,19 @@ body {
 }
 
 /* ─── RESPONSIVE ────────────────────────────────────────────────────────── */
+/* Dashboard nav — hide label text on mobile, show icons only */
 @media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column !important;
+  .dashboard-nav {
+    display: none !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .wallet-grid {
+    grid-template-columns: 1fr !important;
+  }
     gap: 10px !important;
     align-items: stretch !important;
     padding: 12px 14px !important;
