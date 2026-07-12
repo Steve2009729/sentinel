@@ -4,9 +4,14 @@
  * VerificationBadge.tsx — Part 1 of Phase 10
  *
  * Adds a "Testnet Verification" card to the dashboard.
- * The KYC testnet tool (kyc-testnet.hunyuankyc.com) has no live DNS —
- * so this implements the honest fallback per the blueprint:
- *   - Links out to HashKey's real KYC page
+ * Uses the real HashKey Chain Testnet (chain ID 133):
+ *   - RPC:      https://testnet.hsk.xyz
+ *   - Explorer: https://testnet-explorer.hsk.xyz
+ *   - Docs:     https://hashkeycloud.gitbook.io/hashkey-chain-docs/how-to-build/network-infos
+ *
+ * Because no programmatic KYC callback API is publicly available on the
+ * testnet, this implements the honest fallback per the blueprint:
+ *   - Links directly to the real HashKey testnet network info / faucet docs
  *   - Self-attested "I've completed testnet verification" toggle
  *   - Clearly labeled "Testnet Verification" (not "KYC Verified")
  *   - Reward: cosmetic ✓ VERIFIED badge stored per wallet address
@@ -122,7 +127,7 @@ export default function VerificationBadge({ walletAddress }: VerificationBadgePr
                 Testnet Verification
               </div>
               <div style={{ fontSize: 10, color: theme.muted }}>
-                HashKey Chain · Compliance Demo
+                HashKey Chain Testnet · Chain ID 133
               </div>
             </div>
           </div>
@@ -146,13 +151,13 @@ export default function VerificationBadge({ walletAddress }: VerificationBadgePr
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <a
-                href="https://hashkey.blockscout.com"
+                href="https://testnet-explorer.hsk.xyz"
                 target="_blank" rel="noreferrer"
                 style={{ flex: 1, padding: "7px 12px", borderRadius: 8, background: theme.panelAlt,
                   border: `1px solid ${theme.border}`, color: theme.muted, textDecoration: "none",
                   fontSize: 11, fontWeight: 600, textAlign: "center" }}
               >
-                🔗 Explorer
+                🔗 Testnet Explorer
               </a>
               <div style={{ flex: 2, padding: "7px 12px", borderRadius: 8, background: "rgba(0,229,160,0.06)",
                 border: "1px solid rgba(0,229,160,0.2)", fontSize: 11, color: "#00E5A0",
@@ -176,14 +181,14 @@ export default function VerificationBadge({ walletAddress }: VerificationBadgePr
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <a
-                href="https://hashkey.com/en-US"
+                href="https://hashkeycloud.gitbook.io/hashkey-chain-docs/how-to-build/network-infos"
                 target="_blank" rel="noreferrer"
                 style={{ padding: "9px 14px", borderRadius: 10, background: theme.panelAlt,
                   border: `1px solid ${theme.border}`, color: theme.textSecondary,
                   textDecoration: "none", fontSize: 12, fontWeight: 600,
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
               >
-                <span>🔗</span> HashKey Docs
+                <span>🔗</span> Testnet Info
               </a>
               <button
                 onClick={() => setShowConfirm(true)}
