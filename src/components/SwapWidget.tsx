@@ -79,21 +79,65 @@ function buildDexUrl(chain: string, tokenAddress: string, amountIn?: string): st
 }
 
 // ─── PRICE ESTIMATE ───────────────────────────────────────────────────────────
+// HashKey tokens: try HSKSwap QuoterV2 on-chain (Phase 9 confirmed addresses)
+// Base/ETH tokens: GeckoTerminal API (already working)
 
-async function fetchTokenPrice(chain: string, contractAddress: string): Promise<number | null> {
+// Confirmed from @hskswap/sdk-core@1.0.3 — PHASE_9_PROGRESS.md
+const HSKSWAP_QUOTER_V2 = "0x603f70466fDdbE3F238220B9a74FFF419a2BbFDD";
+const WHSK = "0xB210D2120d57b758EE163cFfb43e73728c471Cf1";
+const HSK_RPC = "https://mainnet.hsk.xyz";
+
+const QUOTER_ABI = [
+  "function quoteExactInputSingle(address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external view returns (uint256 amountOut)",
+];
+
+async function fetchHskTokenPrice(contractAddress: string, amountHsk: number): Promise<number | null> {
   try {
-    const chainSlug = chain === "ethereum" ? "eth" : chain;
-    const res = await fetch(
-      `https://api.geckoterminal.com/api/v2/networks/${chainSlug}/tokens/${contractAddress}`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return null;
-    const json = await res.json();
-    const priceStr = json?.data?.attributes?.price_usd;
-    const p = parseFloat(priceStr);
-    return isNaN(p) ? null : p;
+    const { ethers } = await import("ethers");
+    const provider = new ethers.JsonRpcProvider(HSK_RPC);
+    const quoter = new ethers.Contract(HSKSWAP_QUOTER_V2, QUOTER_ABI, provider);
+    const amountInWei = ethers.parseEther(String(amountHsk));
+
+    // Try 0.3% fee (3000) first, then 1% (10000)
+    for (const fee of [3000, 10000, 500]) {
+      try {
+        const amountOut: bigint = await quoter.quoteExactInputSingle(
+          WHSK, contractAddress, fee, amountInWei, 0
+        );
+        if (amountOut > BigInt(0)) {
+          const tokensOut = parseFloat(ethers.formatEther(amountOut));
+          // Price = HSK input / tokens out → price per token in HSK
+          return amountHsk / tokensOut;
+        }
+      } catch { /* try next fee tier */ }
+    }
+    return null;
   } catch {
     return null;
+  }
+}
+
+async function fetchTokenPrice(chain: string, contractAddress: string): Promise<{ price: number | null; source: string }> {
+  // HashKey chain: try QuoterV2 first for on-chain accuracy
+  if (chain === "hashkey") {
+    const hskPrice = await fetchHskTokenPrice(contractAddress, 1);
+    if (hskPrice !== null && hskPrice > 0) {
+      return { price: hskPrice, source: "HSKSwap QuoterV2 🔑" };
+    }
+  }
+  // Base/Ethereum (or HSK fallback): GeckoTerminal
+  try {
+    const net = chain === "ethereum" ? "eth" : chain === "hashkey" ? "hashkey" : chain;
+    const res = await fetch(
+      `https://api.geckoterminal.com/api/v2/networks/${net}/tokens/${contractAddress}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return { price: null, source: "gecko" };
+    const json = await res.json();
+    const p = parseFloat(json?.data?.attributes?.price_usd ?? "");
+    return { price: isNaN(p) ? null : p, source: "GeckoTerminal" };
+  } catch {
+    return { price: null, source: "gecko" };
   }
 }
 
@@ -122,6 +166,7 @@ const PRESET_AMOUNTS = ["10", "25", "50", "100", "250"];
 export default function SwapWidget({ target, onClose }: SwapWidgetProps) {
   const [amount, setAmount] = useState("50");
   const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [priceSource, setPriceSource] = useState<string>("");
   const [priceLoading, setPriceLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -133,12 +178,11 @@ export default function SwapWidget({ target, onClose }: SwapWidgetProps) {
   // Fetch live price on mount and when target changes
   useEffect(() => {
     if (!target?.contractAddress) return;
-    // Start with the price from the signal
     setLivePrice(target.priceUsd > 0 ? target.priceUsd : null);
-    // Then try to get a fresher price from GeckoTerminal
+    setPriceSource("");
     setPriceLoading(true);
-    fetchTokenPrice(chain, target.contractAddress).then((p) => {
-      if (p !== null) setLivePrice(p);
+    fetchTokenPrice(chain, target.contractAddress).then(({ price, source }) => {
+      if (price !== null) { setLivePrice(price); setPriceSource(source); }
       setPriceLoading(false);
     });
   }, [target?.contractAddress, chain, target?.priceUsd]);
@@ -254,6 +298,9 @@ export default function SwapWidget({ target, onClose }: SwapWidgetProps) {
               <div style={{ fontSize: 15, fontWeight: 700, color: theme.text, fontFamily: "var(--font-geist-mono), monospace" }}>
                 {priceLoading ? <span className="animate-blink" style={{ color: theme.muted }}>…</span> : formatPrice(livePrice ?? 0)}
               </div>
+              {priceSource && !priceLoading && (
+                <div style={{ fontSize: 9, color: theme.muted, marginTop: 3 }}>{priceSource}</div>
+              )}
             </div>
             <div style={{ background: theme.panelAlt, border: `1px solid ${theme.border}`, borderRadius: 12, padding: "10px 14px" }}>
               <div style={{ fontSize: 10, color: theme.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>DEX Router</div>

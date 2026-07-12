@@ -10,6 +10,7 @@ import AgentReasoning from "@/components/AgentReasoning";
 import PaymentHistory from "@/components/PaymentHistory";
 import TokenChecker from "@/components/TokenChecker";
 import WalletConnect from "@/components/WalletConnect";
+import VerificationBadge from "@/components/VerificationBadge";
 import PaymentTierGate from "@/components/PaymentTierGate";
 import AICopilot from "@/components/AICopilot";
 import SwapWidget, { type SwapTarget } from "@/components/SwapWidget";
@@ -403,6 +404,7 @@ export default function Dashboard() {
 
           {/* Right sidebar */}
           <aside style={{ display: "grid", gap: 16 }}>
+            <VerificationBadge walletAddress={walletAddress} />
             <PortfolioPanel onAnalyze={handlePortfolioAnalyze} />
             <PaymentHistory results={localResults} />
             <AICopilot />

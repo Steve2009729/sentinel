@@ -6,6 +6,7 @@ import { theme } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 import WalletConnect from "@/components/WalletConnect";
 import LiveToasts from "@/components/LiveToasts";
+import EmailLoginButton from "@/components/EmailLoginButton";
 
 function ParticleField() {
   const items = useRef(Array.from({ length: 18 }, (_, i) => ({
@@ -109,6 +110,7 @@ export default function Home() {
             ))}
           </div>
 
+          <EmailLoginButton />
           <WalletConnect onConnected={handleConnected} />
 
           {/* Demo mode button */}

@@ -4,6 +4,7 @@ import { AgentResult } from "@/lib/types";
 import { theme, actionColor } from "@/lib/theme";
 import { txUrl } from "@/lib/contract";
 import { useStore } from "@/lib/store";
+import { VerifiedBadgeInline } from "@/components/VerificationBadge";
 
 function short(hash: string): string {
   return hash ? `${hash.slice(0, 8)}…${hash.slice(-6)}` : "";
@@ -37,7 +38,7 @@ function HashLink({ label, hash }: { label: string; hash: string }) {
 }
 
 export default function PaymentHistory({ results }: { results: AgentResult[] }) {
-  const { paymentHistory } = useStore();
+  const { paymentHistory, walletAddress } = useStore();
 
   return (
     <div>
@@ -100,6 +101,7 @@ export default function PaymentHistory({ results }: { results: AgentResult[] }) 
                       ? `Signal: ${tx.symbol}`
                       : `Decision: ${tx.symbol}`}
                   </span>
+                  {tx.type === "tier_unlock" && <VerifiedBadgeInline walletAddress={walletAddress} />}
                 </div>
                 <span style={{ fontSize: 12, color: theme.accent, fontWeight: 700 }}>
                   {tx.amount} HSK
